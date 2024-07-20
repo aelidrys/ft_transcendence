@@ -1,0 +1,87 @@
+#trn {
+    font-family: Arial, sans-serif;
+    color: #333;
+    text-align: center;
+}
+
+#trn h3 {
+    color: #444;
+    margin: 20px 0;
+}
+
+
+#trn .container1 {
+    width:100%;
+    margin: 16px 0 12px 0;
+    padding: 16px;
+    display: flex;
+    flex-wrap : wrap;
+    gap: 50px;
+}
+
+#trn .data {
+    background-color: #a9dfbf;
+    b1ox-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+    width: 250px;
+    height: fit-content;
+    padding: 20px;
+    margin: 10px;
+}
+
+#trn .player_img {
+    border-radius: 100%;
+    margin-bottom: 15px;
+}
+
+#trn .player_info h3 {
+    margin: 5px 0;
+}
+
+#trn .cg {
+    color: purple;
+}
+
+#trn .matches {
+    width: 100%;
+    margin: 16px 0 12px 0;
+    padding: 16px;
+    display: flex;
+    flex-wrap : wrap;
+    gap: 50px;
+}
+
+#trn .matche {
+    background-color: green;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+    width: 640px;
+    height: fit-content;
+    padding: 10px;
+    margin: 10px;
+    display: flex;
+    flex-wrap : wrap;
+}
+
+#trn .player1 {
+    background-color: #58D68D;
+    border-radius: 15px;
+    width: 240px;
+    height: fit-content;
+    padding: 10px;
+    margin: 10px 30px;
+}
+
+#trn .player2 {
+    background-color: #a9dfbf;
+    border-radius: 15px;
+    width: 240px;
+    height: fit-content;
+    padding: 10px;
+    margin: 10px 30px;
+}
+
+#trn .h4 {
+    color: #DAF7A6;
+    margin-left: 35%;
+}
