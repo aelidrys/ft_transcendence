@@ -95,8 +95,7 @@ class WSConsumer(WebsocketConsumer):
                 'p2_pr_id':m.player2.profile_id,
             })
 
-        for mtche in trn_matches:
-            print("matche_info", mtche, flush=True)
+
         self.send(text_data=json.dumps({
             'type': 'matche',
             'm_res': m_res,

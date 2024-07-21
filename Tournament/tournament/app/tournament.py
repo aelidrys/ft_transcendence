@@ -6,12 +6,16 @@ from asgiref.sync import async_to_sync
 
 
 def tourn_subscribing(request, data, trn_size):
-    tourn = get_or_create_tourn(data, trn_size)
-    if tourn:
+    subs, tourn = get_or_create_tourn(data, trn_size)
+    if subs:
+        t_players = tourn.trn_players.count()
+        if t_players == trn_size:
+            return tourn
+    else:
         plyr = get_or_create_player(data, tourn)
         plyr.save()
         t_players = tourn.trn_players.count()
-        if t_players == 4:
+        if t_players == trn_size:
             tourn.status = Tourn_status.ST.value
             tourn.save()
             create_matches(tourn)
@@ -43,16 +47,16 @@ def get_or_create_tourn(data, trn_size):
     t_count = tournament.objects.filter(size=trn_size).count()
     if t_count == 0:
         trn = tournament.objects.create(name=f"tourn_{user_id}", size=trn_size)
-        return trn
+        return False, trn
     tourn = tournament.objects.filter(size=trn_size).latest("id")
     plyr = is_user_subscribe(user_id)
     if plyr:
-        return None
+        return True, tourn
     if tourn.status == Tourn_status.ST.value:
         tourn_name = f"tourn_{user_id}"
         new_tourn = tournament.objects.create(name=tourn_name, size=trn_size)
-        return new_tourn
-    return tourn
+        return False, new_tourn
+    return False, tourn
     
 def is_user_subscribe(user_id):
     try:
