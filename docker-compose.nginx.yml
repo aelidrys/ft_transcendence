@@ -8,9 +8,9 @@ services:
       - "8081:80"
 
     volumes:
-      - /home/aelidrys/Desktop/ft_tanc/spa/front:/var/www/html/
-      - /home/aelidrys/Desktop/ft_tanc/ft_trance_spa/pingpong/media:/var/www/html/media
-      - /home/aelidrys/Desktop/ft_tanc/nginx/conf.d:/etc/nginx/conf.d/
+      - ./spa/front:/var/www/html/
+      - ./ft_trance_spa/pingpong/media:/var/www/html/media
+      - ./nginx/conf.d:/etc/nginx/conf.d/
   
     networks:
       - pingpong.net

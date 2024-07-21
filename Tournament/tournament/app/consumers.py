@@ -17,7 +17,7 @@ class WSConsumer(WebsocketConsumer):
         except:
             print('connection Faild!!!!!!', flush=True)
             return
-        self.room_group_name = f'{trn.name}_group'
+        self.room_group_name = f'trnGroup_{trn.pk}'
         
         user = self.scope.get("user", None)
         # if user:
@@ -57,17 +57,19 @@ class WSConsumer(WebsocketConsumer):
         print('send_tournament_update called!!!')
         players = event['tourn_players']
         unknown = event['unknown']
+        trn_name = event['trn_name']
 
         # Send updated player data to WebSocket
-        user = self.scope.get("user", None)
-        if user:
-            print('username: ', user.username)
-        else:
-            print("no user")
+        # user = self.scope.get("user", None)
+        # if user:
+        #     print('username: ', user.username)
+        # else:
+        #     print("no user")
         self.send(text_data=json.dumps({
             'type': 'tourn',
             'players': players,
             'unknown': unknown,
+            'trn_name': trn_name,
         }))
 
     def start_matche(self, event):

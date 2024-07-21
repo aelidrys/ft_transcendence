@@ -11,12 +11,9 @@ from django.http import JsonResponse
 
 
 def start_matche(request, tourn):
-    # user_prf = get_user(request)
-    if user_prf is None:
-        return
     matches = tourn.matches.all()
 
-    context = {'matches':matches, 'user_prf':user_prf}
+    context = {'matches':matches}
     return render(request, 'tournament/matche.html', context) 
 
 def create_matches(tourn: tournament):
@@ -24,7 +21,6 @@ def create_matches(tourn: tournament):
     players = tourn.trn_players.all()
     won_players = [plyr for plyr in players if plyr.won] 
     if len(won_players) == 1:
-        # send_match_start(tourn, 'false')
         tourn.status = Tourn_status.EN.value
         tourn.save()
         return
@@ -38,7 +34,6 @@ def create_matches(tourn: tournament):
             p2 = p
             create_matche(p1, p2, tourn)
         i += 1
-    # send_match_start(tourn, 'true')
 
 
 def create_matche(p1, p2, trn):
@@ -52,7 +47,7 @@ def create_matche(p1, p2, trn):
 
 def send_match_start(trn: tournament, refresh):
     channel_layer = get_channel_layer()
-    group_name = f'{trn.name}_group'
+    group_name = f'trnGroup_{trn.pk}'
 
     print('send_match_start to : ', group_name, flush=True)
     async_to_sync(channel_layer.group_send)(

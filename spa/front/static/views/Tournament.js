@@ -26,53 +26,67 @@ export default class extends AbstractView {
     }
   }
 
-  async chooseTournament(players, inTourn){
+  async chooseTournament(players){
+    // WEB SOCKET //
+    
     var content = "";
-    console.log(`Tournament of ${players} players selected.`);
+    // console.log(`Tournament of ${players} players selected.`);
     var url = '/tournament/api/?trn_size=4'
     if (players == 8)
       url = '/tournament/api/?trn_size=8';
-
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-          'Content-Type': 'application/json',
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(this.data)
     });
 
     if (response.ok)
-    {
-      const data = await response.text();
-      var info = JSON.parse(data);
-      
-      for (const player of info.players) 
-        content += this.generatePlayerHTML(player);
+      {
+        const resp_data = await response.text();
+        var data = JSON.parse(resp_data);
 
-      for (let i = 0; i < info.unknown; i++)
-        content += this.generatePlaceholderHTML();
+        if (data.type == 'tourn'){
+          
+          for (const player of data.players) 
+            content += this.generatePlayerHTML(player);
+          
+          for (let i = 0; i < data.unknown; i++)
+            content += this.generatePlaceholderHTML();
+        }
+        if (data.type == 'matche'){
+          var matches = data.matches;
+          var id = this.data.user.id;
+          for (const matche of matches){
+            if (matche.p1_pr_id == id | matche.p2_pr_id == id)
+              content = this.generateMatcheHtml(matche);
+          }
+        }
+          // this.display_matche(data);
+        
+        
+        
+      }else
+      {
+        content = "error";
+      }
 
-      // WEB SOCKET //
-      console.log("@@@@@@@@@ ",joined," @@@@@@@@");
       if (joined == false | socket == null){
-        socket = new WebSocket('ws://'+ window.location.host +'/ws/tourn/')
+        socket = new WebSocket('ws://'+ window.location.host +`/ws/tourn/?size=${players}`)
         socket.onmessage = e =>{
           const trn_data = JSON.parse(e.data);
-          console.log("@@@@@@@@@ ",trn_data.type," @@@@@@@@");
+          console.log("888888888 ",data.type," 8888888888");
           if (trn_data.type == 'tourn')
             this.updatePlayer(trn_data);
           if (trn_data.type == "matche")
             this.display_matche(trn_data);
         };
       }
-      // console.log(" found ---------"+ data +"--------------")
-      
-    }else
-    {
-      content = "error";
-    }
-    content = `
-      <h3>Welcome in tournament <span class='cg'> ${info.trn_name} </span></h3>
+
+      content = `
+      <h3>Welcome in tournament <span class='cg'> ${data.trn_name} </span></h3>
       <div class='container1'>  ${content} </div>`
     document.getElementById('trn').innerHTML = content;
   }
@@ -127,6 +141,7 @@ export default class extends AbstractView {
 
   updatePlayer(data) {
     var content = "";
+    console.log('++++++++++ update_tourn ++++++++++');
     var players = data.players;
     var unknown = data.unknown;
     for (const playr of players)
@@ -137,7 +152,6 @@ export default class extends AbstractView {
   }
   
   display_matche(data){
-    console.log("-------DISPLAY_MATCHE------");
     var matches = data.matches;
     var content = "";
     var id = this.data.user.id;
@@ -166,12 +180,10 @@ export default class extends AbstractView {
       const resp_data = await response.text();
       var data = JSON.parse(resp_data);
       if (data.intourn == 'yes'){
-        console.log("@@@@@@@@@ intourn: YES @@@@@@@@");
         content += this.chooseTournament(data.trn_size, "YES");
         joined = true;
       }
       else{
-        console.log("@@@@@@@@@ intourn: NO @@@@@@@@");
         content += this.generateTournChoiceHtml();
       }
     }
