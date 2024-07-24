@@ -37,15 +37,18 @@ def play_tournament(request):
     if request.method == 'POST':
         data = request.data
         trn_size = int(request.GET.get('trn_size'))
-        print('#################',trn_size, flush=True)
         trn = tourn_subscribing(request, data, trn_size)
         if trn:
             response = generate_matche_response(trn)
             return HttpResponse(json.dumps(response),
                 content_type='application/json')
-            
 
-    trn = tournament.objects.filter(size=trn_size).latest('id')
+        trn = tournament.objects.filter(size=trn_size).latest('id')
+        players = generate_tourn_response(trn)
+        return HttpResponse(json.dumps(players),
+            content_type='application/json')
+
+def generate_tourn_response(trn: tournament):
     data = trn.trn_players.all()
     playerslist = []
     for player in data:
@@ -54,14 +57,14 @@ def play_tournament(request):
             'username': player.username,
         })
     
-    players = {
+    resp_data = {
         'type': 'tourn',
+        'created': 'true',
         'players': playerslist,
-        'unknown': trn_size - len(playerslist),
+        'unknown': trn.size - len(playerslist),
         'trn_name': trn.name,
     }
-    return HttpResponse(json.dumps(players),
-        content_type='application/json')
+    return resp_data
 
 
 def generate_matche_response(trn: tournament):
@@ -76,11 +79,25 @@ def generate_matche_response(trn: tournament):
             'p2_name':m.player2.name,
             'p2_pr_id':m.player2.profile_id,
         })
-    trn_matches = {
+    resp_data = {
         'type': 'matche',
         'm_res': 'win',
         'refresh': 'false',
         'matches': trn_matches,
+        'trn_name': trn.name,
     }
-    return trn_matches
+    return resp_data
 
+
+def tourn_info(request):
+    if request.method == 'GET':
+        trn_size = int(request.GET.get('trn_size'))
+        try:
+            trn = tournament.objects.filter(size=trn_size).latest('id')
+            players = generate_tourn_response(trn)
+            return HttpResponse(json.dumps(players),
+                content_type='application/json')
+        except:
+            pass
+    return HttpResponse(json.dumps({'type':'tourn', 'created': 'false'}),
+        content_type='application/json')

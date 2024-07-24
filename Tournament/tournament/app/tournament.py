@@ -1,6 +1,6 @@
 from .models import tournament
 from .matches import create_matches, player, send_match_start
-from .enums import Tourn_status, U_status
+from .enums import Tourn_status, Round
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
@@ -55,6 +55,10 @@ def get_or_create_tourn(data, trn_size):
     if tourn.status == Tourn_status.ST.value:
         tourn_name = f"tourn_{user_id}"
         new_tourn = tournament.objects.create(name=tourn_name, size=trn_size)
+        if trn_size == 8:
+            new_tourn.round = Round.QU.value
+        elif trn_size == 4:
+            new_tourn.round = Round.HF.value
         return False, new_tourn
     return False, tourn
     

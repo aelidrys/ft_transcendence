@@ -14,6 +14,8 @@
     width:100%;
     margin: 16px 0 12px 0;
     padding: 16px;
+    border-radius: 15px;
+    box-shadow: 2px 6px 6px green;
     display: flex;
     flex-wrap : wrap;
     gap: 50px;
@@ -21,7 +23,7 @@
 
 #trn .data {
     background-color: #a9dfbf;
-    b1ox-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px green;
     border-radius: 15px;
     width: 250px;
     height: fit-content;
@@ -85,3 +87,25 @@
     color: #DAF7A6;
     margin-left: 35%;
 }
+
+.button-trn {
+    width: 90%;
+    height: 250px;
+    padding-left: 10%;
+    padding-right: 10%;
+    padding-top: 5%;
+    padding-bottom: 5%;
+    margin: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    flex-direction: column;
+
+    color: var(--yallow-color);
+    font-family: "Bebas Neue", sans-serif;
+    font-style: normal;
+    font-size: 50px;
+  }

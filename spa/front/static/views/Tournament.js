@@ -18,22 +18,87 @@ export default class extends AbstractView {
       console.log('%%%%%%% AFTER RANDER %%%%%%%%%%')
       butn1 = document.getElementById("trn4");
       console.log(butn1)
-      butn1.addEventListener("click" ,this.chooseTournament.bind(this, 4, "NO"));
+      butn1.addEventListener("click" , this.chooseTournament.bind(this, 4, 'update'));
+      butn1.addEventListener("mouseover" , this.tourn_hover.bind(this, 'trn4', 4));
+      butn1.addEventListener("mouseout" ,this.tourn_out.bind(this, 'trn4', 4));
       
       butn2 = document.getElementById("trn8");
       console.log(butn2)
-      butn2.addEventListener("click" ,this.chooseTournament.bind(this, 8, "NO"));
+      butn2.addEventListener("click" , this.chooseTournament.bind(this, 8, 'update'));
+      butn2.addEventListener("mouseover" , this.tourn_hover.bind(this, 'trn8', 8));
+      butn2.addEventListener("mouseout" ,this.tourn_out.bind(this, 'trn8', 8));
     }
   }
 
-  async chooseTournament(players){
-    // WEB SOCKET //
+  async tourn_hover(element_id, plyrs_num, event){
+    const domc = document.getElementById(element_id);
+    if (domc.contains(event.fromElement))
+      return;
+    // console.log("_________________");
+    // console.log(event);
+    // console.log("_________________");
+
+    var url = `/tournament/tourn_hover/?trn_size=${plyrs_num}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (response.ok){
+      const data = await response.text();
+      var trn_data = JSON.parse(data);
+      if (trn_data.created == 'true')
+        this.trn_data(element_id, trn_data);
+      else{
+        var content = `
+          <div id='no_trn'>
+            <h1>No Tournament Available click to create a new Tournament</h1>
+          </div>
+        `;
+        document.getElementById(element_id).innerHTML = content
+      }
+    }
+    else{
+      console.log('!!!!!!!!!!!----ERROR----!!!!!!!!!!!')
+    }
+  }
+  
+  trn_data(element_id, trn_data){
+    var content = '';
+    var players = trn_data.players;
+    var unknown = trn_data.unknown;
+    for (const player of players)
+      content += `
+        <img src="${player.image_url}" height="80" class="player_img">
+    `;
+    for (let i = 0 ; i < unknown; i++)
+      content += `
+      <img src="media/unkonu_p.png" height="80" class="player_img">
+    `;
+
+    content = `<div class='container1' id='trn_info'>  ${content} </div>`;
+    document.getElementById(element_id).innerHTML = content;
+
+  }
+
+  tourn_out(element_id, plyrs_num, event){
+    const domc = document.getElementById(element_id);
+    if (domc.contains(event.toElement))
+      return;
+    // console.log("_________________");
+    // console.log(event);
+    // console.log("_________________");
+    var content = `
+      <h1>Tournament Of ${plyrs_num} Players</h1>
+    `;
+    document.getElementById(element_id).innerHTML = content;
+  }
+
+  async chooseTournament(plyrs_num, task){
     
     var content = "";
-    // console.log(`Tournament of ${players} players selected.`);
-    var url = '/tournament/api/?trn_size=4'
-    if (players == 8)
-      url = '/tournament/api/?trn_size=8';
+    var url = `/tournament/api/?trn_size=${plyrs_num}`;
     
     const response = await fetch(url, {
       method: 'POST',
@@ -48,59 +113,39 @@ export default class extends AbstractView {
         const resp_data = await response.text();
         var data = JSON.parse(resp_data);
 
-        if (data.type == 'tourn'){
-          
-          for (const player of data.players) 
-            content += this.generatePlayerHTML(player);
-          
-          for (let i = 0; i < data.unknown; i++)
-            content += this.generatePlaceholderHTML();
-        }
-        if (data.type == 'matche'){
-          var matches = data.matches;
-          var id = this.data.user.id;
-          for (const matche of matches){
-            if (matche.p1_pr_id == id | matche.p2_pr_id == id)
-              content = this.generateMatcheHtml(matche);
-          }
-        }
-          // this.display_matche(data);
-        
-        
+        if (data.type == 'tourn')
+          content = this.updatePlayer(data, task);
+        if (data.type == 'matche')
+          this.display_matche(data);
         
       }else
       {
         content = "error";
       }
-
+      
+      // WEB SOCKET //
       if (joined == false | socket == null){
-        socket = new WebSocket('ws://'+ window.location.host +`/ws/tourn/?size=${players}`)
+        socket = new WebSocket('ws://'+ window.location.host +`/ws/tourn/?size=${plyrs_num}`)
         socket.onmessage = e =>{
           const trn_data = JSON.parse(e.data);
-          console.log("888888888 ",data.type," 8888888888");
+          console.log("SSSSSSocket type: =====>",data.type);
           if (trn_data.type == 'tourn')
             this.updatePlayer(trn_data);
           if (trn_data.type == "matche")
             this.display_matche(trn_data);
         };
       }
-
-      content = `
-      <h3>Welcome in tournament <span class='cg'> ${data.trn_name} </span></h3>
-      <div class='container1'>  ${content} </div>`
-    document.getElementById('trn').innerHTML = content;
+      return content;
   }
 
   generateTournChoiceHtml()
   {
     return `
-      <div class="button-card box1 rounded-5" id="trn4">
-        <h1>Tournament Of 4 Players</h1>
-        <h1> mode : online</h1>
+      <div class="button-trn box1 rounded-5" id="trn4">
+        <h1 id='trn_info'>Tournament Of 4 Players</h1>
       </div>
-      <div class="button-card box1 rounded-5" id="trn8">
-        <h1>Tournament of 8 Players</h1>
-        <h1> mode : online</h1>
+      <div class="button-trn box1 rounded-5" id="trn8">
+          <h1>Tournament of 8 Players</h1>
       </div>
       `;
   }
@@ -139,7 +184,7 @@ export default class extends AbstractView {
     `
   }
 
-  updatePlayer(data) {
+  updatePlayer(data, task) {
     var content = "";
     console.log('++++++++++ update_tourn ++++++++++');
     var players = data.players;
@@ -148,7 +193,16 @@ export default class extends AbstractView {
       content += this.generatePlayerHTML(playr);
     for (let i = 0 ; i < unknown; i++)
       content += this.generatePlaceholderHTML();
-    document.querySelector('.container1').innerHTML = content;
+
+    content = `
+      <h3>Welcome in tournament <span class='cg'> ${data.trn_name} </span></h3>
+      <div class='container1'>  ${content} </div>`;
+    ;
+    if (task == 'update'){
+      document.getElementById('trn').innerHTML = content;
+    }
+    else
+      return content;
   }
   
   display_matche(data){
@@ -159,7 +213,11 @@ export default class extends AbstractView {
       if (matche.p1_pr_id == id | matche.p2_pr_id == id)
         content = this.generateMatcheHtml(matche);
     }
-    document.querySelector('.container1').innerHTML = content;
+    
+    content = `
+    <h3>Welcome in tournament <span class='cg'> ${data.trn_name} </span></h3>
+    <div class='container1'>  ${content} </div>`;
+    document.getElementById('trn').innerHTML = content;
   }
 
   async getHtml() {
@@ -180,7 +238,7 @@ export default class extends AbstractView {
       const resp_data = await response.text();
       var data = JSON.parse(resp_data);
       if (data.intourn == 'yes'){
-        content += this.chooseTournament(data.trn_size, "YES");
+        content = await this.chooseTournament(data.trn_size, 'return');
         joined = true;
       }
       else{
@@ -206,8 +264,8 @@ export default class extends AbstractView {
 
     <div id="trn">
       ${content}
-      </div>
-      `;
+    </div>
+    `;
 
       
 

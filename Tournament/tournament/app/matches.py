@@ -48,6 +48,7 @@ def create_matche(p1, p2, trn):
 def send_match_start(trn: tournament, refresh):
     channel_layer = get_channel_layer()
     group_name = f'trnGroup_{trn.pk}'
+    trn_name = trn.name
 
     print('send_match_start to : ', group_name, flush=True)
     async_to_sync(channel_layer.group_send)(
@@ -56,6 +57,7 @@ def send_match_start(trn: tournament, refresh):
             "type": "start_matche",
             'refresh': refresh,
             "trn_id": trn.pk,
+            'trn_name': trn_name,
         }
     )
 
@@ -102,23 +104,3 @@ def new_round(trn):
     return trn
 
 
-def get_matche(trn, user):
-    mtches = matche.objects.filter(round=trn.round)
-    for mtche in mtches:
-        if mtche.player1.profile_id == user.id:
-            return mtche
-        if mtche.player2.profile_id == user.id:
-            return mtche
-    print('no mtche exist', flush=True)
-    return None
-
-def get_player(user_prf):
-    players = user_prf.players.all()
-    plyr_count = players.count()
-    i = 0
-    for plyr in players:
-        # print('plyr_trn_name ', plyr.tournament.name, flush=True)
-        player = plyr
-        i += 1
-        if i == plyr_count:
-            return player

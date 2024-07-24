@@ -75,10 +75,11 @@ class WSConsumer(WebsocketConsumer):
     def start_matche(self, event):
         trn_id = event['trn_id']
         refresh = event['refresh']
+        trn_name = event['trn_name']
         trn = tournament.objects.get(id=trn_id)
-        self.send_matche_start(trn, refresh)
+        self.send_matche_start(trn, refresh, trn_name)
     
-    def send_matche_start(self, trn: tournament, refresh):
+    def send_matche_start(self, trn: tournament, refresh, trn_name):
         user = self.scope.get("user", None)
         m_res = 'win'
         print('send start_matche to user: {}'.format(user.username,
@@ -95,12 +96,13 @@ class WSConsumer(WebsocketConsumer):
                 'p2_pr_id':m.player2.profile_id,
             })
 
-
+        # print('trn_name: ', trn_name, flush=True)
         self.send(text_data=json.dumps({
             'type': 'matche',
             'm_res': m_res,
             'refresh': refresh,
             'matches': trn_matches,
+            'trn_name': trn_name,
         }))
 
         
