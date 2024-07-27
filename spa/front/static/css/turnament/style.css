@@ -15,8 +15,10 @@
     margin: 16px 0 12px 0;
     padding: 16px;
     border-radius: 15px;
-    box-shadow: 2px 6px 6px green;
+    /* box-shadow: 2px 6px 6px green; */
     display: flex;
+    justify-content: center;
+    align-items: center;
     flex-wrap : wrap;
     gap: 50px;
 }
@@ -90,7 +92,7 @@
 
 .button-trn {
     width: 90%;
-    height: 250px;
+    height: fit-content;
     padding-left: 10%;
     padding-right: 10%;
     padding-top: 5%;

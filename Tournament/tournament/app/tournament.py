@@ -22,7 +22,7 @@ def tourn_subscribing(request, data, trn_size):
             send_match_start(tourn, 'true')
             return tourn
         else:
-            send_tournament_update(tourn)
+            send_tournament_update(tourn, 'tourn_subscribing')
     return None
 
 
@@ -78,7 +78,7 @@ def is_user_subscribe(user_id):
     return None
 
 
-def send_tournament_update(tourn: tournament):
+def send_tournament_update(tourn: tournament, prev_f):
     channel_layer = get_channel_layer()
     room_group_name = f'trnGroup_{tourn.pk}'
     players = tourn.trn_players.all()
@@ -96,4 +96,5 @@ def send_tournament_update(tourn: tournament):
             'trn_name': tourn.name,
         }
     )
-    print('tourn_up send to group: ', room_group_name)
+    print('tourn_up send to group: {} {}'.format(room_group_name, prev_f),
+        flush=True)

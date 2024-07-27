@@ -5,7 +5,6 @@ import json
 from random import randint
 from time import sleep
 # local import
-from .views import play_tournament
 from .models import tournament
 from .matches import matche, matche_simulation
 from .enums import Tourn_status
@@ -54,7 +53,7 @@ class WSConsumer(WebsocketConsumer):
         )
 
     def update_tournament(self, event):
-        print('send_tournament_update called!!!')
+        print('send_tournament_update called!!!', flush=True)
         players = event['tourn_players']
         unknown = event['unknown']
         trn_name = event['trn_name']
@@ -106,3 +105,37 @@ class WSConsumer(WebsocketConsumer):
         }))
 
         
+
+class WSConsumer_trnInfo(WebsocketConsumer):
+    def connect(self):
+        self.room_group_name = 'tournament_info'
+
+        async_to_sync(self.channel_layer.group_add)(
+            self.room_group_name,
+            self.channel_name,
+        )
+        self.accept()
+
+    def disconnect(self, close_code):
+        async_to_sync(self.channel_layer.group_discard)(
+            self.room_group_name,
+            self.channel_name,
+        )
+
+
+    def tourn_info(self, event):
+        plyrs = event['players']
+        unknown = event['unknown']
+        trn_name = event['trn_name']
+        trn_size = event['trn_size']
+
+        print("tournament_info plyrs:", plyrs, flush=True)
+        self.send(text_data=json.dumps({
+            'players': plyrs,
+            'unknown': unknown,
+            'trn_name': trn_name,
+            'trn_size': trn_size,
+        }))
+
+
+

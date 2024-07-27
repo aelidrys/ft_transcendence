@@ -47,8 +47,8 @@ export const router = async () => {
     var view = await new match.route.view();
     document.querySelector(".sidebar").innerHTML = await view.getSidebar();
     document.querySelector(".content").innerHTML = await view.getHtml();
-    console.log("\n ***** index afterRender ****** \n")
-    view.afterRender(); 
+    console.log("\n ***** index afterRender ****** \n");
+    view.afterRender();
 };
 
 
@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded",()=>{
             }
         }
     });
-    router();
+    // router();
 })
 
  const refreshAccessToken = async () => {
