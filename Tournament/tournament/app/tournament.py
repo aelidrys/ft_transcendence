@@ -98,3 +98,6 @@ def send_tournament_update(tourn: tournament, prev_f):
     )
     print('tourn_up send to group: {} {}'.format(room_group_name, prev_f),
         flush=True)
+    
+
+

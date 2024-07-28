@@ -14,7 +14,6 @@ from asgiref.sync import async_to_sync
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def is_intorn(request):
-    print('***********ENTER************', flush=True)
     if request.method == 'POST':
         data = request.data
         user_id = data['user']['id']

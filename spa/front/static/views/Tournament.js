@@ -98,7 +98,9 @@ export default class extends AbstractView {
         }
         if (data.type == 'matche')
           this.display_matche(data);
-        
+      
+        localStorage.setItem('inTourn', true);
+        joined = true;
       }else
       {
         content = "error";
@@ -123,14 +125,6 @@ export default class extends AbstractView {
   async leave_trn(){
     var url = `/tournament/leave_trn/`;
     console.log(this.data);
-    trnInfoSocket = new WebSocket('ws://'+ window.location.host +`/ws/tourn_info/`);
-    trnInfoSocket.onmessage = e =>{
-      const trn_data = JSON.parse(e.data);
-      if (trn_data.trn_size == 4)
-        this.trn_data('trn4_info', trn_data);
-      if (trn_data.trn_size == 8)
-        this.trn_data('trn8_info', trn_data);
-    };
     
     socket.close();
     var response = await fetch(url,{
@@ -147,51 +141,64 @@ export default class extends AbstractView {
       await this.tourn_info('trn4_info', 4);
       await this.tourn_info('trn8_info', 8);
       joined = false;
+      localStorage.setItem('inTourn', false);
       
+      // Socket
+      trnInfoSocket = new WebSocket('ws://'+ window.location.host +`/ws/tourn_info/`);
+      trnInfoSocket.onmessage = e =>{
+        const trn_data = JSON.parse(e.data);
+        if (trn_data.trn_size == 4)
+          this.trn_data('trn4_info', trn_data);
+        if (trn_data.trn_size == 8)
+          this.trn_data('trn8_info', trn_data);
+      };
       this.afterRender();
     }
+
   }
-  
-    updatePlayer(data, task) {
-      var content = "";
-      console.log('++++++++++ task: '+task+' ++++++++++');
-      var players = data.players;
-      var unknown = data.unknown;
-      for (const playr of players)
-        content += this.generatePlayerHTML(playr);
-      for (let i = 0 ; i < unknown; i++)
-        content += this.generatePlaceholderHTML();
-  
-      content = `
-        <h3>Welcome in tournament <span class='cg'> ${data.trn_name} </span></h3>
-        <div class='container1'>  ${content} </div>
-        <bottun class='data' type"button" id="leav_trn">
-          <span style="color:rebeccapurple;font-size:25px;">leave tournament</span>
-        </button>`;
-      if (task == 'update'){
-        document.getElementById('trn').innerHTML = content;
-        var elem = document.getElementById('leav_trn');
-        elem.addEventListener('click', this.leave_trn.bind(this));
-      }
-      else{
-        return content;
-      }
+
+
+  updatePlayer(data, task) {
+    var content = "";
+    console.log('++++++++++ task: '+task+' ++++++++++');
+    var players = data.players;
+    var unknown = data.unknown;
+    for (const playr of players)
+      content += this.generatePlayerHTML(playr);
+    for (let i = 0 ; i < unknown; i++)
+      content += this.generatePlaceholderHTML();
+
+    content = `
+      <h3>Welcome in tournament <span class='cg'> ${data.trn_name} </span></h3>
+      <div class='container1'>  ${content} </div>
+      <bottun class='data' type"button" id="leav_trn">
+        <span style="color:rebeccapurple;font-size:25px;">leave tournament</span>
+      </button>`;
+    if (task == 'update'){
+      document.getElementById('trn').innerHTML = content;
+      var elem = document.getElementById('leav_trn');
+      elem.addEventListener('click', this.leave_trn.bind(this));
+    }
+    else{
+      return content;
+    }
+  }
+
+
+  display_matche(data){
+    var matches = data.matches;
+    var content = "";
+    var id = this.data.user.id;
+    for (const matche of matches){
+      if (matche.p1_pr_id == id | matche.p2_pr_id == id)
+        content = this.generateMatcheHtml(matche);
     }
     
-    display_matche(data){
-      var matches = data.matches;
-      var content = "";
-      var id = this.data.user.id;
-      for (const matche of matches){
-        if (matche.p1_pr_id == id | matche.p2_pr_id == id)
-          content = this.generateMatcheHtml(matche);
-      }
-      
-      content = `
-      <h3>Welcome in tournament <span class='cg'> ${data.trn_name} </span></h3>
-      <div class='container1'>  ${content} </div>`;
-      document.getElementById('trn').innerHTML = content;
-    }
+    content = `
+    <h3>Welcome in tournament <span class='cg'> ${data.trn_name} </span></h3>
+    <div class='container1'>  ${content} </div>`;
+    document.getElementById('trn').innerHTML = content;
+  }
 
   generateTournChoiceHtml()
   {
@@ -266,13 +273,13 @@ export default class extends AbstractView {
       var data = JSON.parse(resp_data);
       if (data.intourn == 'yes'){
         content = await this.trn_subscribe(data.trn_size, 'return');
-        joined = true;
+
       }
       if (data.intourn == 'no'){
-        console.log("==========TRN_INFO on message============");
         content += this.generateTournChoiceHtml();
         trnInfoSocket = new WebSocket('ws://'+ window.location.host +`/ws/tourn_info/`);
         trnInfoSocket.onmessage = e =>{
+          console.log("==========TRN_INFO on message============");
           const trn_data = JSON.parse(e.data);
           if (trn_data.trn_size == 4)
             this.trn_data('trn4_info', trn_data);
