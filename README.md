@@ -26,7 +26,7 @@
 
 ---
 #### Represintation of relationships in a UML Diagram
-![uml](https://d2slcw3kip6qmk.cloudfront.net/marketing/blog/2017Q3/er-diagram-symbols-and-notation/ERDCardinallity.png)
+<img src="https://d2slcw3kip6qmk.cloudfront.net/marketing/blog/2017Q3/er-diagram-symbols-and-notation/ERDCardinallity.png" width=400px height=400px></img>
 
 <h3>Database schema</h3>
 <img src="Tournament/database_schema.png"></img>
