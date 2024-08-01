@@ -12,6 +12,7 @@ def get_game_view(request):
     return render(request,"view.html")
 
 def create_players(player, side):
+    print("triggered --------*- a*d-a*-------------")
     url = "http://django:8000/api/getUser/"
     headers = {'Content-Type': 'application/json'}  # Adjust headers as needed
     body = {"login"      : player}
@@ -56,11 +57,14 @@ def creat_game(requst):
         obj.player2         = p2.login
         obj.round           = 1
         obj.game_started    = False
+        obj.type            = "noraml"
+        if "type" in body:
+            obj.type = body['type']
         obj.save()
         print('----------------------------------')
         print(obj.pk)
         print('----------------------------------')
-        add_to_task_list(obj.pk, p1, p2)
+        add_to_task_list(obj.pk,obj ,p1, p2)
         res['msg'] = "created"
         res['code'] = 1
         return HttpResponse(json.dumps(res), content_type='application/json')
@@ -73,13 +77,21 @@ def creat_game(requst):
 class is_in_game(APIView):
     def post(self, request):
         try:
+            players = Player.objects.all()
+            print("all players = ")
+            print(players)
             data = json.loads(request.body)
             name = data.get('login')
             token = data.get('access_token')
             if is_auth(data) == True:
                 pass
             # return HttpResponse('NO')
+            
             p = Player.objects.get(login = name)
+            
+            print("sending YES")
             return HttpResponse('YES')
         except Exception as e:
+            print(e)
+            print("sending NO")
             return HttpResponse('NO')

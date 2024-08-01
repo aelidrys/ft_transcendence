@@ -18,24 +18,29 @@ obj_list = {}
 
 
 async def runtask(id):
+    print("running task ---------------  77")
     task_list[id] = asyncio.create_task(obj_list[id].loop())
+    print("running task ---------------  emd *---")
 
-def add_to_task_list(id, p1, p2):
-    obj_list[id] = game(id, p1, p2)
+def add_to_task_list(id, game_table, p1_table, p2_table):
+    print(f"created : \n\t game {game_table.pk} \n\t playe1 {p1_table.pk} \n\t playe2 {p2_table.pk}")
+    obj_list[id] = game(id, game_table,p1_table, p2_table)
     print(f"size --- {len(obj_list)}")
+    print(f"size --- {len(task_list)}")
+
 
 
 async def connect(game_id, channel_name, side):
     if not game_id in obj_list:
         ValueError("no game for you")
-    
+    print("trigged connection -*-*-*-")
     await obj_list[game_id].connect(channel_name, side)
     print (f'con task_list {len(task_list)}')
     return obj_list[game_id].group
 
 
 class game():
-    def __init__(self, id, profile1, profile2):
+    def __init__(self, id,game_db, p1_db, p2_db):
         self.id = id
         self.group = f"group_for_game_{id}"
         self.pid1 = None
@@ -53,11 +58,12 @@ class game():
         )
         self.ball = Ball_movment()
         self.cl = get_channel_layer()
-
         self.p1gols = 0
         self.p2gols = 0
-        self.profile1 = profile1
-        self.profile2 = profile2
+        self.p1_db = p1_db
+        self.p2_db = p2_db
+        self.game_db = game_db
+        self.golsOrder = ""
         
     async def echo_group(self, task):
         msg = json.dumps(task)
@@ -92,15 +98,6 @@ class game():
 
     async def loop(self):
         pass
-        # i = 0
-        # while (True):
-        #     print(f"ruuninggggg {i}")
-        #     i += 1
-        #     await asyncio.sleep(5)
-        #     cmd = get_cmd('msg',{"text":f'in_game {i}'})
-        #     await self.echo_group(cmd)
-        # await self.cl.group_send(self.group, {"type": "save_group_name","message": self.group})
-        # await self.identify_players()
         await self.move_objs()
         await self.round_start()
         while(True):
@@ -112,19 +109,38 @@ class game():
             if winer != 0:
                 await self.activat_movment(False)
                 await self.round_end(winer)
+                self.golsOrder += str(winer)
+                print(f"{self.p1gols} golate {self.p2gols}")
                 if self.p1gols == 5 or self.p2gols == 5:
-                    stat1 = True if self.p1gols == 5 else False
-                    stat2 = True if self.p2gols == 5 else False
+                    stat1 = 1 if self.p1gols == 5 else 0
+                    stat2 = 1 if self.p2gols == 5 else 0
                     await self.update_score()
                     await self.makewiner(self.pid1, stat1, self.p1gols, self.p2gols)
                     await self.makewiner(self.pid2, stat2, self.p1gols, self.p2gols)
-                    g = await sync_to_async(InGame.objects.get)(pk=self.id)
-                    p1 = await sync_to_async(Player.objects.get)(login=g.player1)
-                    p2 = await sync_to_async(Player.objects.get)(login=g.player2)
-                    await sync_to_async(g.delete)()
-                    await sync_to_async(p1.delete)()
-                    await sync_to_async(p2.delete)()
-                    break
+                    print(f"------------> {self.id}")
+                    try:
+                        
+                        await self.setHistoric(stat1 , stat2)
+                        print(f"deleteing  --* ")
+                        print(f"deleted  --* finish")
+                        del obj_list[self.id]
+                        await self.cl.group_send(self.group, {"type": "disconnect_event","message": "disconnect"})
+                        
+                        if self.game_db.type == "turn":
+                            pass
+                        await asyncio.sleep(1.5)
+                        await sync_to_async(self.p1_db.delete)()
+                        await sync_to_async(self.p2_db.delete)()
+                        await sync_to_async(self.game_db.delete)()
+                        return
+                    except Exception as e:
+                         print(e)
+                    # await self.setHistoric(stat1 , stat2)
+                    # print(f"{len(obj_list)} **56-*//45")
+                    # del obj_list[self.id]
+                    # print(f"{len(obj_list)} **finstion")
+                    # await self.cl.group_send(self.group, {"type": "disconnect_event","message": "disconnect"})
+                    return
                 else:
                     await self.update_score()
                     await self.round_start()
@@ -133,7 +149,54 @@ class game():
             await self.move_objs()##message to clients
             await asyncio.sleep(0.02)
         # #     break
-      
+    
+    async def setHistoric(self, p1w, p2w):
+        p1name = self.p1_db.login
+        p2name = self.p2_db.login
+        try:
+            p1stats = await sync_to_async(PlayerStats.objects.get)(login=p1name)
+            print("found p1")
+        except Exception as e:
+            print("not found craet new one p1")
+            p1stats = PlayerStats()
+            p1stats.login = p1name
+        try:
+            p2stats = await sync_to_async(PlayerStats.objects.get)(login=p2name)
+            print("found p2")
+        except Exception as e:
+            print("not found craet new one p2")
+            p2stats = PlayerStats()
+            p2stats.login = p2name
+        print("aa**adda")
+        p1stats.games_played += 1
+        p1stats.wins += p1w
+        p1stats.loss += p2w
+        p1stats.goals_scored   += self.p1gols
+        p1stats.goals_conceded += self.p2gols
+
+        p2stats.games_played += 1
+        p2stats.wins += p1w
+        p2stats.loss += p2w
+        p2stats.goals_scored   += self.p2gols
+        p2stats.goals_conceded += self.p1gols
+
+        glogs = PonGames()
+        glogs.gamename = f"{p1name} {p2name}"
+        glogs.player1 = p1name
+        glogs.player2 = p2name
+        glogs.goals_order = self.golsOrder
+        glogs.p1goal = self.p1gols
+        glogs.p2goal = self.p2gols
+        if (p1w == 1):
+            glogs.winner = p1name
+        else :
+            glogs.winner = p2name
+        print(f"{p1stats.login} -- and  -- {p2stats.login} -- on -- {glogs.gamename}")
+        await sync_to_async(p1stats.save)()
+        await sync_to_async(p2stats.save)()
+        await sync_to_async(glogs.save)()
+
+        
     async def round_end(self, winner):
         
         await self.activat_movment(False)
@@ -155,11 +218,12 @@ class game():
         await self.countDownEnd()
 
     async def makewiner(self, pid, stat, p1s,  p2s):
-        msg = "Win !!" if stat == True else "Lose !!"
+        msg = "Win !!" if stat == 1 else "Lose !!"
         cmd = get_cmd('match_end',{"msg": msg, "reson" : f"{p1s} - {p2s}"})
         await self.send_message_by_id(cmd ,pid)
 
     async def update_score(self):
+        
         cmd = get_cmd('update_score',{"p1": self.p1gols, "p2" : self.p2gols})
         await self.echo_group(cmd)
     
@@ -173,16 +237,16 @@ class game():
 
     async def identify_players(self, side):
         cmd = get_cmd('pannel',{
-                    "login1" : self.profile1.login,
-                    "login2" : self.profile2.login,
-                    "iamge1" : self.profile1.imageURL,
-                    "iamge2" : self.profile2.imageURL,
+                    "login1" : self.p1_db.login,
+                    "login2" : self.p2_db.login,
+                    "iamge1" : self.p1_db.imageURL,
+                    "iamge2" : self.p2_db.imageURL,
                 })
         if side == 1:
             await self.send_message_by_id(cmd, self.pid1)
         else :
             await self.send_message_by_id(cmd, self.pid2)
-        
+    
     async def activat_movment(self, allow):
         self.move_allowed = allow
         cmd = get_cmd('allow_move',{'allowed' : allow})

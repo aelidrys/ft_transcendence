@@ -33,6 +33,7 @@ class sockets(AsyncWebsocketConsumer):
 
 
     async def disconnect(self, close_code):
+        print("can deconecti")
         if self.player:
             self.player.is_connected = False
             self.player.channel_id = None
@@ -41,7 +42,10 @@ class sockets(AsyncWebsocketConsumer):
         try:
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
         except Exception as e:
+            print(e)
             pass
+        
+        print("salit +-+-+-+")
     async def receive(self, text_data):
         try :
             data = json.loads(text_data)
@@ -53,8 +57,9 @@ class sockets(AsyncWebsocketConsumer):
                 self.login = data.get('login')
                 await self.find_game()
         except Exception as e:
-            # print(e)
-            self.close()
+            print(e)
+            print("aaaaaaaaaaaaa-----------aaaaaaaaaaa")
+            await self.close()
 
     async def redirect(self, pageURl):
         pass
@@ -97,6 +102,14 @@ class sockets(AsyncWebsocketConsumer):
     async def chat_message(self, event):
         message = event["message"]
         await self.send(message)
+
+    async def disconnect_event(self, event):
+        try:
+            print("**99**99**99**78")
+            await self.close()
+            print("clzitha")
+        except Exception as e:
+            print(e)
 
     async def private_message(self, event):
         message = event["message"]

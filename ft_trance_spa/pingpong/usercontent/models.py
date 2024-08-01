@@ -83,28 +83,32 @@ class Notification(models.Model):
     is_read = models.BooleanField(default=False)
     def __str__(self):
         return self.message
-    
-# import os
-# from django.dispatch import receiver
-#     # delete image when Profile deleted
-# @receiver(models.signals.post_delete, sender=Profile)
-# def auto_delete_file_on_delete(sender, instance, **kwargs):
-#     if instance.image and not instance.image.path == default_image_path:
-#         if os.path.isfile(instance.image.path):
-#             os.remove(instance.image.path)
 
-# # delete old image when a new image is selected
-# @receiver(models.signals.pre_save, sender=Profile)
-# def auto_delete_file_on_change(sender, instance, **kwargs):
-#     if not instance.pk:
-#         return False
+default_avatar_path = '/media/default.jpg'
 
-#     try:
-#         old_file = Profile.objects.get(pk=instance.pk).image
-#     except Profile.DoesNotExist:
-#         return False
+import os
+from django.dispatch import receiver
+    # delete image when Profile deleted
+@receiver(models.signals.post_delete, sender=Profile)
+def auto_delete_file_on_delete(sender, instance, **kwargs):
+    print('##########IMG_PATH: ', instance.avatar.path, flush=True)
+    if instance.avatar and not instance.avatar.path == default_avatar_path:
+        if os.path.isfile(instance.avatar.path):
+            os.remove(instance.avatar.path)
 
-#     new_file = instance.image
-#     if not old_file == new_file and old_file.path != default_image_path:
-#         if os.path.isfile(old_file.path):
-#             os.remove(old_file.path)
+# delete old image when a new image is selected
+@receiver(models.signals.pre_save, sender=Profile)
+def auto_delete_file_on_change(sender, instance, **kwargs):
+    print('##########IMG_PATH: ', instance.avatar.path, flush=True)
+    if not instance.pk:
+        return False
+
+    try:
+        old_file = Profile.objects.get(pk=instance.pk).avatar
+    except Profile.DoesNotExist:
+        return False
+
+    new_file = instance.avatar
+    if not old_file == new_file and old_file.path != default_avatar_path:
+        if os.path.isfile(old_file.path):
+            os.remove(old_file.path)

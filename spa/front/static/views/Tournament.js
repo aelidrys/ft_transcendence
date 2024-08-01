@@ -5,6 +5,9 @@ var butn2 = null;
 var joined = false;
 var socket = null;
 var trnInfoSocket = null;
+var displaytype = 3;
+var type = '';
+let trns_id = [];
 
 export default class extends AbstractView {
   constructor() {
@@ -15,7 +18,8 @@ export default class extends AbstractView {
 
   async afterRender()
   {
-    if (joined == false){
+    console.log('TYPE: ', type);
+    if (joined == false && type == 'tourn'){
       console.log('%%%%%%% AFTER RANDER %%%%%%%%%%');
       butn1 = document.getElementById("trn4");
       console.log(butn1);
@@ -26,8 +30,12 @@ export default class extends AbstractView {
       butn2.addEventListener("click" , this.trn_subscribe.bind(this, 8, 'update'));
       await this.tourn_info('trn4_info', 4);
       await this.tourn_info('trn8_info', 8);
+      for (let id of trns_id){
+        var trn_btn = document.getElementById(id);
+        trn_btn.addEventListener('click', this.trn_history.bind(this, id));
+      }
     }
-    else{
+    else if (type == 'tourn'){
       var elem = document.getElementById('leav_trn');
       elem.addEventListener('click', this.leave_trn.bind(this));
     }
@@ -49,7 +57,7 @@ export default class extends AbstractView {
         this.trn_data(element_id, trn_data);
       else{
         var content = `<h1>tournament not created yet</h1>`;
-        document.getElementById(element_id).innerHTML = content;
+        // document.getElementById(element_id).innerHTML = content;
       }
     } 
   }
@@ -60,18 +68,31 @@ export default class extends AbstractView {
     var unknown = trn_data.unknown;
     for (const player of players){
       content += `
-      <img src="${player.image_url}" height="40" class="player_img">
+      <div class="player_tour">
+        <img src="${player.image_url}">
+      </div>
       `;
     }
     for (let i = 0 ; i < unknown; i++){
       content += `
-      <img src="media/unkonu_p.png" height="40" class="player_img">
+      <div class="player_tour">
+        <img src="media/unkonu_p.png">
+      </div>
       `;
     }
 
     document.getElementById(element_id).innerHTML = content;
   }
 
+  async trn_history(id){
+    var url = `tournament/trn_history/?trn_id=${id}`;
+    var response = await fetch(url);
+    if (response.ok){
+      var data = await response.text();
+      var trn_hstry = JSON.parse(data);
+      console.log("TRN_HISTORY: ", trn_hstry); 
+    }
+  }
 
   async trn_subscribe(plyrs_num, task){
     
@@ -91,20 +112,21 @@ export default class extends AbstractView {
         const resp_data = await response.text();
         var data = JSON.parse(resp_data);
 
-        if (task == 'update' && trnInfoSocket != null)
-          trnInfoSocket.close();
-        if (data.type == 'tourn'){
-          content = this.updatePlayer(data, task);
-        }
-        if (data.type == 'matche')
-          this.display_matche(data);
-      
+        type = data.type;
         localStorage.setItem('inTourn', true);
         joined = true;
-      }else
-      {
-        content = "error";
+        if (task == 'update' && trnInfoSocket != null)
+          trnInfoSocket.close();
+        if (data.type == 'tourn')
+          content = this.updatePlayer(data, task);
+        if (data.type == 'matche'){
+          content = this.display_matche(data, task);
+          return content;
+        }
+      
       }
+      else
+        content = "error";
       
       // WEB SOCKET //
       if (joined == false | socket == null){
@@ -115,7 +137,7 @@ export default class extends AbstractView {
           if (trn_data.type == 'tourn')
             this.updatePlayer(trn_data, 'update');
           if (trn_data.type == "matche")
-            this.display_matche(trn_data);
+            this.display_matche(trn_data, 'update');
         };
       }
       return content;
@@ -136,7 +158,7 @@ export default class extends AbstractView {
     });
     if (response.ok){
       console.log('player leave_trn');
-      var content = this.generateTournChoiceHtml();
+      var content = await this.generateTournChoiceHtml();
       document.getElementById('trn').innerHTML = content;
       await this.tourn_info('trn4_info', 4);
       await this.tourn_info('trn8_info', 8);
@@ -146,6 +168,7 @@ export default class extends AbstractView {
       // Socket
       trnInfoSocket = new WebSocket('ws://'+ window.location.host +`/ws/tourn_info/`);
       trnInfoSocket.onmessage = e =>{
+        console.log('======TOUR_INFO======');
         const trn_data = JSON.parse(e.data);
         if (trn_data.trn_size == 4)
           this.trn_data('trn4_info', trn_data);
@@ -184,38 +207,88 @@ export default class extends AbstractView {
     }
   }
 
+  // display_game_page()
+  // {
+  //   document.getElementById('trn').innerHTML = " game view ";
+  // }
 
-  display_matche(data){
+  display_matche(data, task){
     var matches = data.matches;
     var content = "";
     var id = this.data.user.id;
     for (const matche of matches){
-      if (matche.p1_pr_id == id | matche.p2_pr_id == id)
+      if (matche.p1_pr_id == id || matche.p2_pr_id == id)
         content = this.generateMatcheHtml(matche);
     }
-    
+    // console.log('matches: [', matches,']')
     content = `
     <h3>Welcome in tournament <span class='cg'> ${data.trn_name} </span></h3>
     <div class='container1'>  ${content} </div>`;
+    if (task == 'return')
+      return content;
     document.getElementById('trn').innerHTML = content;
+
+    // setInterval(display_game_page.bind(this), 3000)
+
   }
 
-  generateTournChoiceHtml()
+  async generateTournChoiceHtml()
   {
-    return `
-      <div class="button-trn box1 rounded-5" id="trn4">
-        <h1 id='trn_info'>Tournament Of 4 Players</h1>
-        <div class='container1' id=trn4_info>
-          <h1>NO TOURN</h1>
+    var content = `
+      <div class="option_4" id="trn4">
+        4
+        <div class='players' id=trn4_info>
+
         </div>
       </div>
-      <div class="button-trn box1 rounded-5" id="trn8">
-        <h1 id='trn_info'>Tournament of 8 Players</h1>
-        <div class='container1' id=trn8_info>
-          <h1>NO TOURN</h1>
+      <div class="option_8" id="trn8">
+        8
+        <div class='players' id=trn8_info>
+
         </div>
       </div>
+      
+      <div id='tourns' class='option_history scrool-friend'>
+        <div class="choose-to-tournament">
       `;
+      
+      var url = `/tournament/trn_history/`;
+      var response = await fetch(url,{
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(this.data),
+      });
+      if (response.ok){
+        const data = await response.text();
+        var trn_data = JSON.parse(data);
+        var trns = trn_data.trns;
+        console.log('TOURNAMENTS: ',trns)
+
+
+        for (var trn of trns){
+          content += `
+          <div class='choose'>
+            <img src="/media/torn_${trn.size}.avif">
+            <div class="choose-info">
+              <div class="choose-name">${trn.name}<i class="fas fa-trophy trophy-icon"></i></div>
+              <div class="choose-tournament-type">Tournament: ${trn.size} players</div>
+              <div class="choose-level">Level Reached: ${trn.won}</div>
+            </div>
+            <div id="bracket"></div>
+            <div id="${trn.id}">
+                <button class="choose-button">show</button>
+            </div>
+          </div>`;
+          trns_id.push(trn.id);
+        }
+      }
+      content += `
+        </div>
+      </div>`;
+      type = 'tourn';
+      return content;
   }
 
   generatePlayerHTML(player)
@@ -276,7 +349,8 @@ export default class extends AbstractView {
 
       }
       if (data.intourn == 'no'){
-        content += this.generateTournChoiceHtml();
+        joined = false;
+        content += await this.generateTournChoiceHtml();
         trnInfoSocket = new WebSocket('ws://'+ window.location.host +`/ws/tourn_info/`);
         trnInfoSocket.onmessage = e =>{
           console.log("==========TRN_INFO on message============");
@@ -304,9 +378,11 @@ export default class extends AbstractView {
         <img src="${this.data.avatar}" class=" ms-3" alt="">
       </div>
     </header>
-
-    <div id="trn">
-      ${content}
+    <div class='content_tour'>
+      <div class="Tournament-brack"> Tournament Break </div>
+      <div class='container_tour' id="trn">
+        ${content}
+      </div>
     </div>
     `;  
 

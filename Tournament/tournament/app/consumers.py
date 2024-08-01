@@ -5,14 +5,14 @@ import json
 from random import randint
 from time import sleep
 # local import
-from .models import tournament
-from .matches import matche, matche_simulation
+from .models import Tournament
+from .matches import Matche
 from .enums import Tourn_status
 
 class WSConsumer(WebsocketConsumer):
     def connect(self):
         try:
-            trn = tournament.objects.latest("id")
+            trn = Tournament.objects.latest("id")
         except:
             print('connection Faild!!!!!!', flush=True)
             return
@@ -34,13 +34,7 @@ class WSConsumer(WebsocketConsumer):
     def receive(self, text_data):
         user = self.scope.get("user", None)
         print('consumer {} receive'.format(user.username), flush=True)
-        data = json.loads(text_data)
-        if data['type'] == 'play_matche':
-            trn = matche_simulation(user)
-            refresh = 'true'
-            if trn.status == Tourn_status.EN.value:
-                refresh = 'false'
-            self.send_matche_start(trn, refresh)
+        
 
     def disconnect(self, close_code):
         print("DISCONNECT", flush=True)
@@ -57,7 +51,6 @@ class WSConsumer(WebsocketConsumer):
         players = event['tourn_players']
         unknown = event['unknown']
         trn_name = event['trn_name']
-
         # Send updated player data to WebSocket
         # user = self.scope.get("user", None)
         # if user:
@@ -75,15 +68,15 @@ class WSConsumer(WebsocketConsumer):
         trn_id = event['trn_id']
         refresh = event['refresh']
         trn_name = event['trn_name']
-        trn = tournament.objects.get(id=trn_id)
+        trn = Tournament.objects.get(id=trn_id)
         self.send_matche_start(trn, refresh, trn_name)
-    
-    def send_matche_start(self, trn: tournament, refresh, trn_name):
+
+    def send_matche_start(self, trn: Tournament, refresh, trn_name):
         user = self.scope.get("user", None)
         m_res = 'win'
         print('send start_matche to user: {}'.format(user.username,
                     ), flush=True)
-        matches = matche.objects.filter(tourn=trn, round=trn.round)
+        matches = Matche.objects.filter(tourn=trn, round=trn.round)
         trn_matches = []
         for m in matches:
             trn_matches.append({
@@ -94,7 +87,6 @@ class WSConsumer(WebsocketConsumer):
                 'p2_name':m.player2.name,
                 'p2_pr_id':m.player2.profile_id,
             })
-
         # print('trn_name: ', trn_name, flush=True)
         self.send(text_data=json.dumps({
             'type': 'matche',

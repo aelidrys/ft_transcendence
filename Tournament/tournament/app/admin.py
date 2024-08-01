@@ -1,7 +1,7 @@
 from django.contrib import admin
-from .models import tournament
-from .matches import matche, player
+from .models import Tournament, Player
+from .matches import Matche
 
-admin.site.register(tournament)
-admin.site.register(matche)
-admin.site.register(player)
+admin.site.register(Tournament)
+admin.site.register(Matche)
+admin.site.register(Player)

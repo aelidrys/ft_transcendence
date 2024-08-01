@@ -28,13 +28,4 @@ class M_status(Enum):
     def choices(cls):
         return tuple((i.name, i.value) for i in cls)
     
-
-class U_status(Enum):
-    ON = 'online'
-    OF = 'ofline'
-    IG = 'ingame'
-
-    @classmethod
-    def choices(cls):
-        return tuple((i.name, i.value) for i in cls)
     
