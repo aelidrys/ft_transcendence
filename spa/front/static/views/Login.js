@@ -1,93 +1,104 @@
-// Login.js
 import AbstractView from "../js/AbstractView.js";
-import { navigateTo } from "../js/index.js";
-import { createSocketConnection } from "../js/utils.js";
+import { navigateTo,establishSocket,refreshAccessToken} from "../js/index.js";
+import { messageHandling } from "../js/utils.js";
+import { CheckTokenExpire, SetCookie,getCookie } from "../js/tools.js";
+import { loginHTML } from "../js/HtmlPages.js";
+
 export default class extends AbstractView {
     constructor() {
         super();
-        console.log("Login constructor called");
-
         this.setTitle("Login");
-        this.setHead(`
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <!-- Main Template css file -->
-            <link rel="stylesheet" href="/static/css/style.css">
-            <!-- Render all elements normally -->
-            <link rel="stylesheet" href="/static/css/normalize.css">
-            <!-- Font Awesome Library -->
-            <link rel="stylesheet" href="/static/css/all.min.css" />
-            <!-- Google Fonts -->
-            <link rel="preconnect" href="https://fonts.gstatic.com" />
-            <link
-                href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@200;300;400;500;600;700;800&display=swap"
-                rel="stylesheet"
-            />
-        `);
-    }
-    
-    async getHtml() {
-        return `
-            <div class="container">
-                <div class="login old-user"> 
-                    <form class="login-input" action="" method="post">
-                        <h1>SIGN IN</h1>
-                        <input type="text" name="username" placeholder="username" required>
-                        <input type="password" name="password" placeholder="password" required>
-                        <input type="submit" class="signin" value="SIGN IN">
-                    </form>
-                    <a class="back-button switch-signup" href="/register">&lt; SIGN UP</a>
-                    <div class="message-success">
-                        <i class="fa-solid fa-circle-check"></i>
-                    </div>
-                    <div class="message-error">
-                        <i class="fa-solid fa-circle-exclamation"></i>
-                    </div>
-                </div>
-            </div>
-        `;
     }
 
-    async  loginUser(event) {
-
-        event.preventDefault();
+    async getHtml() {return loginHTML;}
     
-    
-        console.log("entrer in login");
-        const formdata = new FormData(event.target);
-        const data = Object.fromEntries(formdata.entries());
-    
-       try {
-            const response = await fetch(`/api/login/`, {
+    async  sendRequest(url, data) {
+        try {
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(data)
             });
-    
-            const responseData = await response.json();
-    
-            if (response.ok) {
-                localStorage.setItem('access_token', responseData.access);
-                localStorage.setItem('refresh_token', responseData.refresh);
-                console.log('User login successfully', responseData);
-                createSocketConnection();
-                navigateTo("/home")// Redirect to home page after successful login
-            } else {
-                let msgerr = document.querySelector(".message-error");
-                msgerr.innerHTML = `  <p><i class="fa-solid fa-triangle-exclamation"></i> ${responseData.detail}</p>`;
-                msgerr.style.display = "block"; 
-                console.error('Login failed', responseData);
-            }
+            return response;
         } catch (error) {
-            console.error('An err or occurred:', error);
+            messageHandling("error", error);
+            throw error;
         }
     }
-   async getSidebar(){
-        return ``;
+    
+    handleResponse(response, responseData) {
+        if (response.ok) {
+            return responseData;
+        } else {
+            const errorMessage = `${Object.keys(responseData)[0]} : ${Object.values(responseData)[0]}`;
+            throw new Error(errorMessage);
+        }
     }
-    afterRender(){
-        document.querySelector(".login-input").addEventListener("submit", this.loginUser.bind(this));
+    
+     setTokens(access, refresh) {
+        SetCookie('access_token', access);
+        SetCookie('refresh_token', refresh);
     }
+    
+     handleSuccess(message, redirectUrl) {
+        messageHandling("success", message);
+        navigateTo(redirectUrl);
+    }
+
+    getFormData(formElement) {
+        const formdata = new FormData(formElement);
+        return Object.fromEntries(formdata.entries());
+    }
+    async loginUser(event) {
+        event.preventDefault();
+        const data = this.getFormData(event.target);
+
+        try {
+            const response = await this.sendRequest('/api/login/', data);
+            const responseData = await response.json();
+            const result = this.handleResponse(response, responseData);
+            this.setTokens(result.access, result.refresh);
+            this.handleSuccess("User login successfully", "/home");
+        } catch (error) {
+            messageHandling("error",error.message)
+        }
+    }
+    async  registerUser(event) {
+        event.preventDefault();
+        const data = this.getFormData(event.target);    
+        try {
+            const response = await this.sendRequest('/api/register/', data);
+            const responseData = await response.json();
+            this.handleResponse(response, responseData);
+            this.handleSuccess("User registered successfully", "/login");
+        } catch (error) {
+            messageHandling("error",error.message)
+        }
+    }
+
+    async searchHandle(){}  
+    async getSidebar(){return ``;}
+    async authorizeIntra() {window.location.href = "/api/rauth/intra_authorize";}
+    async loginWithIntra() { await this.authorizeIntra();}
+    async inAuthpages(){return true;}
+
+    afterRender() {
+        const loginInput = document.querySelector(".login-input");
+        const loginIntra =  document.querySelectorAll(".login-with-intra");
+        const registerInput = document.querySelector(".register-input");
+        if (loginInput)   loginInput.addEventListener("submit", this.loginUser.bind(this));
+        if (registerInput) registerInput.addEventListener("submit", this.registerUser.bind(this));
+        
+        loginIntra.forEach((e)=>{   e.addEventListener("click", this.loginWithIntra.bind(this));   });                 
+
+        const container = document.getElementById('container_login');
+        const registerBtn = document.getElementById('register');
+        const loginBtn = document.getElementById('login');
+
+      if (registerBtn) registerBtn.addEventListener('click', () => {if (container)  container.classList.add("active");});
+      if (loginBtn)   loginBtn.addEventListener('click', () => { if (container)  container.classList.remove("active");});
+    }
+ 
 }

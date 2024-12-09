@@ -1,75 +1,67 @@
 import AbstractView from "../js/AbstractView.js";
-
+import { CheckTokenExpire } from "../js/tools.js";
 export default class extends AbstractView {
   constructor() {
     super();
     this.setTitle("Home");
     this.pageTitle = "HOME";
-    // this.addSidebar();
-   
-//     this.setHead(`meta charset="UTF-8">
-//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-//     <title>Pingpong</title>
-//     <link rel="stylesheet" href="/static/css/bootstrap.min.css" />
-//     <link rel="stylesheet" href="/static/css/all.min.css" />
-//     <link rel="stylesheet" href="/static/css/master.css" />
-
-//     <link rel="preconnect" href="https://fonts.googleapis.com">
-// <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-// <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Jaro:opsz@6..72&family=Rakkas&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Shojumaru&family=Titan+One&display=swap" rel="stylesheet">
-// `);
-   
-    // document.querySelector(".sidebar").style.display = "block";
-    // document.querySelector("header").style.display = "flex";
-  
-  
   }
 
- 
-
-  
-
   async getHtml() {
-
-    await this.setPayload();
-    await this.setData();
-    return `  
-    <header class="headbar w-100  align-items-center justify-content-between  p-4">
-      <div class="search position-relative">
-        <input type="search" class="p-2  ps-5 rounded-3" placeholder="Type A Keyword">
-      </div>
-      <div class="icons d-flex align-items-center  ">
-        <span class="notf postion-relative">
-          <i class="fa-solid fa-bell fa-lg"></i>
-        </span>
-        <img src="${this.data.avatar}" class=" ms-3" alt="">
-      </div>
-    </header>
-    
-        <div class="wrapper d-grid  gap-2 m-3">
-        <div class=" d-flex align-items-end justify-content-end box1 rounded-5"> 
-         <img src="static/images/mhyb.png" alt="">
-         </div>
-         <div class=" d-flex align-items-end justify-content-end box3 rounded-5"> 
-          <img src="static/images/yppi.png" alt="">
-          </div>
-        <div class=" d-flex align-items-end justify-content-between box2 rounded-5 ">
-          
-          <img src="static/images/droitvs.png" alt="">
-          <div class="text-center m-2">
-
+    const headernav = await this.getHeader();
+    return (
+      headernav +
+      `  
+      <div class="content_index flex-grow-1 p-3">
+      <div class="wrapper d-grid  gap-2">
+        <div class=" d-flex align-items-center justify-content-between box2 rounded-5 ">
+        <img src="static/images/droitvs.png" alt="">
+          <div class="ktab text-center  m-2">
             <h3>Pingpong</h3>
-            <p class=" m-3">Welcome to the pingpong world come join us for a game!</p>
+            <p class="text-wlc  m-3">W</p>
+          </div>
+          <img src="static/images/qauchevs.png" alt="">
+        </div>
+        <div class=" d-flex align-items-end  justify-content-between  box1 rounded-5"> 
+          <img src="static/images/file-12.png" alt="">
+          <div class="ktab-box-1 ">
+             <p class="text-box-3 ">Ready to play?</p>
+            <p class="text-home m-3">Join a quick match to test your skills against other players. Dive into the game, challenge yourself, and enjoy the action right away!</p>
             <div class="play-now">
-              <a class="text-center btn " href="/games"><i class="fa-solid fa-play"></i>
-                <span> PlayNow</span></a>
+            <a data-link class="text-center  btn btn-box-3" href="/games"><i class="fa-solid fa-play"></i>
+                <span>Play</span></a>
               </div>
           </div>
-            <img src="static/images/qauchevs.png" alt="">
-        
         </div>
-    </div>
-    `
-      ;
+        <div class=" d-flex align-items-end justify-content-between box3 rounded-5"> 
+          <div class="ktab-box-3">
+            <p class=" text-box-1 ">Compete for the ultimate title!</p>
+            <p class="text-home m-3">Join our tournaments to face off against top players and rise through the ranks. Each tournament offers exciting rewards and a chance to showcase your skills. Prepare yourself for intense, competitive matches!</p>
+          <div class="play-now" >
+          <a data-link  class="text-center btn btn-box  " href="/tournament"><span>Join</span></a></div>
+          </div>
+          <img src="static/images/file-11.png" alt="" >
+          </div>
+      </div>
+      </div>
+      `
+    );
+  }
+  async afterRender() {
+    CheckTokenExpire(this.payload.exp);
+    this.textWriter(
+      ".text-wlc",
+      "elcome to the pingpong world come join us for a game!"
+    );
+
+  }
+  async textWriter(element, txt) {
+    const textwr = document.querySelector(element);
+    if (!textwr) return;
+    for (let index = 0; index < txt.length; index++) {
+      setTimeout(() => {
+        textwr.innerHTML += txt[index];
+      }, 50 * index);
+    }
   }
 }

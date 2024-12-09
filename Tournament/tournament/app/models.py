@@ -11,6 +11,7 @@ class Tournament(models.Model):
         default=Round.HF.value)
     create_date = models.DateTimeField(default=timezone.now)
     size = models.IntegerField(default=4)
+    created_at = models.DateTimeField(default=timezone.now)
     def __str__(self):
         return self.name
 
@@ -23,7 +24,8 @@ class Player(models.Model):
     img_url = models.URLField(null=True)
     won = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)
-
+    goals_achieved = models.IntegerField(default=0)
+    goals_received = models.IntegerField(default=0)
     def __str__(self):
         return self.name
 
@@ -36,11 +38,11 @@ class Matche(models.Model):
         on_delete=models.CASCADE, null=True)
     player2 = models.ForeignKey(Player, related_name="p2_matches",
         on_delete=models.CASCADE, null=True)
-    p1_score = models.IntegerField(default=0)
+    p1_score = models.IntegerField(default=0) 
     p2_score = models.IntegerField(default=0)
     winner = models.ForeignKey(Player, related_name="m_win",
         on_delete=models.CASCADE, null=True)
     status = models.CharField(max_length=50, default=M_status.UNP.value,
         choices=M_status.choices())
-    
+    created_at = models.DateTimeField(default=timezone.now)
     

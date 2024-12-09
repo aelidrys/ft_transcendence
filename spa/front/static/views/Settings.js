@@ -1,6 +1,8 @@
 import AbstractView from "../js/AbstractView.js";
-import { navigateTo } from "../js/index.js";
+import { navigateTo, tokenIsValid } from "../js/index.js";
+import { getCookie } from "../js/tools.js";
 
+import { messageHandling , CostumConfigDialog} from "../js/utils.js";
 
 export default class extends AbstractView {
     constructor() {
@@ -8,153 +10,231 @@ export default class extends AbstractView {
         this.setTitle("Settings");
         this.pageTitle = "SETTINGS";
 
-    //     this.setHead(`   <meta charset="UTF-8">
-    //     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    //     <title>Pingpong</title>
-    //     <link rel="stylesheet" href="/static/css/bootstrap.min.css" />
-    //     <link rel="stylesheet" href="/static/css/all.min.css" />
-    //     <link rel="stylesheet" href="/static/css/master.css" />
-    
-    //     <link rel="preconnect" href="https://fonts.googleapis.com">
-    // <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    // <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Jaro:opsz@6..72&family=Rakkas&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Shojumaru&family=Titan+One&display=swap" rel="stylesheet">
-    
-    // `) 
    }
 
+
+   
     async getHtml() {
-        await this.setPayload();
-        await this.setData();
-        console.log("payload   in html ", this.payload);
-        return `
-        <header class="headbar w-100  align-items-center justify-content-between  p-4">
-        <div class="search position-relative">
-      <input type="search" class="p-2  ps-5 rounded-3" placeholder="Type A Keyword">
-    </div>
-    <div class="icons d-flex align-items-center  ">
-      <span class="notf postion-relative">
-      <i class="fa-solid fa-bell fa-lg"></i>
-    </span>
-    <img src="${this.data.avatar}" class=" ms-3" alt="">
-  </div>
-</header>
-
-
-<div class="settings-all d-grid     rounded-4 ms-3 me-3 mt-5 ">
-    <div class="boxsett-1 d-flex justify-content-between">
-        <div class="t-sett d-flex align-items-center">
-            <h1> UserInfo </h1>
-            <i class="fa-solid fa-user  fa-fw"></i>
+        const headernav = await this.getHeader();
+        return headernav  +   `  
+       
+        <div class="content_setting">
+  <div class="main-content p-4 m-1">
+    <h1 class="position-relative mb-1">Settings</h1>
+    <form method="post" action="" class="profileinfo">
+      <div class="profile-picture-container image-container">
+        <img
+          src="${this.data.avatar}"
+          alt="Profile Picture"
+          class="profile-picture"
+          id="profile-image"
+        />
+        <div id="test">
+          <label class="edit-button" for="file-input2" id="edit-profile-picture"
+            >Edit</label
+          >
+          <input
+            type="file"
+            id="file-input2"
+            name="avatar"
+            class="form-control-file form-control-file"
+            hidden
+            accept="image/*"
+            id="id_avatar"
+          />
         </div>
-        <form method="post"  action="" class=" userinfo w-75 d-flex align-items-center">
+      </div>
+    </form>
+    <h3>Details</h3>
+    <form method="post" class="userinfo" action="">
+      <div class="profile-section two-column">
+      </div>
+      <div class="profile-section two-column">
+        <div class="input-group">
+          <label for="id_username">User Name</label>
+          <input
+            type="text"
+            name="username"
+            value="${this.data.user.username}"
+            maxlength="100"
+            id="id_username"
+          />
+        </div>
+        <div class="input-group">
+          <label for="id_email">Email</label>
+          <input
+            type="text"
+            name="email"
+            value="${this.data.user.email}"
+            maxlength="320"
+            id="id_email"
+          />
+        </div>
+      </div>
 
-              <div class="form-group m-3">
-                  <label   class="small mb-1">Username:</label>
-                      <input type="text" name="username" value="${this.data.user.username}" class="form-control" maxlength="100" required="" id="id_username">
-                  <label class="small mb-1">Email:</label>
-                      <input type="text" name="email" value="${this.data.user.email}" class="form-control" maxlength="320" required="" id="id_email">
-              </div>
-              <br><br>
-              <button type="submit" class="btn btn-dark btn-lg">Save Changes</button>
-              <button type="reset" class="btn btn-dark btn-lg">Reset</button>
-              </form>
+      <button type="submit">Update</button>
+      <button type="reset">Reset</button>
+    </form>
 
+    <h3 class="mt-5">Change Password</h3>
+
+    <form method="post" class="changepassword" action="">
+      <div class="profile-section two-column">
+        <div class="input-group">
+          <label for="oldpassword">Current Password</label>
+          <input type="password" name="oldpassword" required id="oldpassword"">
+        </div>
+
+        <div class="input-group">
+          <label for="newpassword">New Password</label>
+          <input type="password" name="newpassword" required id="newpassword"">
+        </div>
+      </div>
+      <button type="submit">Update</button>
+      <button type="reset">Reset</button>
+    </form>
+
+    <h3 class="mt-5">Tournament Settings</h3>
+
+    <form method="post" class="profileinfo-trn" action="">
+      <div class="profile-section two-column">
+        <div class="input-group">
+          <label for="tn-id">Tournament Name</label>
+          <input
+            type="text"
+            name="tournament_name"
+            required
+            value="${this.data.tournament_name}"
+            maxlength="100"
+            id="tn-id"
+          />
+        </div>
+      </div>
+      <button type="submit">Update</button>
+      <button type="reset">Reset</button>
+    </form>
+  </div>
 </div>
-<div class="settings-all d-grid     rounded-4 ms-3 me-3 mt-5 ">
-    <div class="boxsett-1 d-flex justify-content-between">
-        <div class="t-sett d-flex align-items-center">
-            <h1> Profile </h1>
-            <i class="fa-solid fa-user  fa-fw"></i>
-        </div>
-            
-            <form method="post"  action="" class="profileinfo w-75 d-flex align-items-center">
 
-              <div class="form-group w-100 m-3">
-                  <!-- <a href="#">Change Password</a>
-                  <hr> -->
-                  <label for="id_avatar" class="small mb-1">Change Avatar:</label>
-                  <input type="file" name="avatar" class="form-control-file" accept="image/*" id="id_avatar">
-                  <label class="small mb-1 w-100">Bio:</label> 
-                  <textarea name="bio" cols="40" rows="5" class="form-control" required="" id="id_bio"  >${this.data.bio}</textarea>
-              </div>
-      <br><br>
-      <button type="submit" class="btn btn-dark btn-lg">Save Changes</button>
-      <button type="reset" class="btn btn-dark btn-lg">Reset</button>
-  </form>
-  </div>
-        
-        
         
             `;
     }
-    async updateProfile(event){
 
-        event.preventDefault();
-        console.log("inside funstin update paylo",this.payload)
-        let access_token = localStorage.getItem("access_token")
-        const formdata = new FormData(event.target);
-        // const data = Object.fromEntries(formdata.entries());
 
+
+    async handleRequest(url, method, formData) {
+        const access_token = getCookie("access_token");
         try {
-            const response = await fetch(`/api/profile/${this.payload.user_id}/`,
-                {
-                    method: 'PUT',
-                    headers: {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
                     'Authorization': `Bearer ${access_token}`
-                    },
-                    // body: JSON.stringify(data)
-                    body: formdata
-                }
-            );
-            
-            const responseData = await response.json();
-            if (response.ok) {
-                console.log('Avatar updated successfully', responseData);
-                navigateTo("/profile")
-            } else {
-                console.error('Update avatar failed', responseData);
+                },
+                body: formData
+            });
+            let responseData 
+            try {
+                responseData = await response.json();
+            } catch (error) {
+                if (response.status === 413) throw new Error('Image Too Large');
+                throw new Error('An Undefined Error Has Occurred. Please Try Again Later');
             }
-
+            if (response.ok) {
+                const successMessage = Object.values(responseData)[0];
+                messageHandling("success", successMessage); // 
+                return { success: true, data: responseData };
+            } else if (response.status === 401) {
+               await  tokenIsValid();
+                messageHandling("info", "Session refreshed. Please click again.");
+                return { success: false, error: "Unauthorized" };
+            } else {
+                const errorMessages = Object.values(responseData);
+                messageHandling("error", errorMessages);
+                return { success: false, error: errorMessages };
+            }
         } catch (error) {
-            console.log("error :" ,error);
-            
+            messageHandling("error",error.message)
+            return { success: false, error: error.message };
         }
     }
 
-    async updateUser(event){
+
+    async updateProfile(event) {
         event.preventDefault();
-        console.log("inside funstin update paylo",this.payload)
-        let access_token = localStorage.getItem("access_token")
-        const formdata = new FormData(event.target);
+        let regex = /[^a-zA-Z0-9_-]/
+        const formData = new FormData(event.target);
+        const tournament_name = formData.get('tournament_name');
 
-        try {
-            const response = await fetch(`/api/userupdate/`,
-                {
-                    method: 'PUT',
-                    headers: {
-                    'Authorization': `Bearer ${access_token}`
-                    },
-                    // body: JSON.stringify(data)
-                    body: formdata
-                }
-            );
-            
-            const responseData = await response.json();
-            if (response.ok) {
-                console.log('Avatar updated successfully', responseData);
-                navigateTo("/profile")
-            } else {
-                console.error('Update avatar failed', responseData);
-            }
-
-            } catch (error) {
-                console.log("error :" ,error);
-                
+        if(tournament_name)
+        {
+          if (tournament_name.match(regex)){
+            messageHandling("error","Tournament Name  is not valid. Please correct it.");
+            return;
             }
         }
+        else{ messageHandling("error","Tournament Name Is Required"); return ;}
+
+        const url = `/api/profile/${this.payload.user_id}/`;
+    
+        const result = await this.handleRequest(url, 'PUT', formData);
+        if (result.success) {
+            navigateTo("/profile");
+        }
+    }
+
+
+    async changePassword(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const url = `/api/changepassword/${this.payload.user_id}/`;
+    
+        const result = await this.handleRequest(url, 'PUT', formData);
+        if (result.success) {
+            navigateTo("/profile");
+        }
+    }
+
+    async updateUser(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const username = formData.get("username"); 
+        if (username) {
+            formData.set("username", username.toLowerCase());
+        }
+        const url = `/api/userupdate/`;
+        const result = await this.handleRequest(url, 'PUT', formData);
+        if (result.success) {
+            navigateTo("/profile");
+        }
+    }
 
     afterRender() {
-        document.querySelector(".profileinfo").addEventListener("submit",this.updateProfile.bind(this));
-        document.querySelector(".userinfo").addEventListener("submit",this.updateUser.bind(this));
+      const settingTourn = document.querySelector(".profileinfo-trn");
+      const settingUser = document.querySelector(".userinfo");
+      const settingPassword = document.querySelector(".changepassword");
+      const changeImg = document.querySelector(".form-control-file");
+
+      if (settingTourn) settingTourn.addEventListener("submit",(e) =>{this.updateProfile(e)});
+      if (settingUser) settingUser.addEventListener("submit",this.updateUser.bind(this));
+      if (settingPassword) settingPassword.addEventListener("submit",this.changePassword.bind(this));
+
+      if (changeImg) {
+        changeImg.onchange = () => {
+          const file = changeImg.files[0];
+          this.updateProfileAvatar(file);
+        };
+      }
     }
+    
+    async updateProfileAvatar(file) {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        const url = `/api/profile/${this.payload.user_id}/`;
+    
+        const result = await this.handleRequest(url, 'PUT', formData);
+        if (result.success) {
+            navigateTo("/profile");
+        }
+    }
+    
 }

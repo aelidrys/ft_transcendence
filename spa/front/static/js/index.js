@@ -1,143 +1,133 @@
-// import  {router,navigateTo}   from "./router.js";
+import  {router}   from "./router.js";
+import {CostumConfigDialog,messageHandling} from "./utils.js";
+import { clone_messageOther ,getProfileById,getCookie,CheckTokenExpire,SetCookie, setLoader} from "../js/tools.js";
+import WebSocketManager from "./Websocket.js";
+import { listenForMessage ,lisenForNotifications} from "./Websocket.js";
+import { fetch_data, getDataUtils } from "./BaseUtils.js";
+window.dialog = new CostumConfigDialog();
 
-
-import Home from "/static/views/Home.js";
-import Profile from "/static/views/Profile.js";
-import Settings from "/static/views/Settings.js";
-import Login from "/static/views/Login.js"
-import Register from "/static/views/Register.js";
-import Logout  from "/static/views/Logout.js";
-import Friends from "/static/views/Friends.js";
-import Games from "/static/views/Games.js";
-import Tournament from "/static/views/Tournament.js";
-import Leaderboard from "/static/views/Leaderboard.js";
-// import Friends  from "/views/Friends.js";
-
+export function establishSocket(){
+    let loc = window.location;
+    let wsStart = 'ws://';
+    if (loc.protocol == 'https:') {
+        wsStart = 'wss://'
+    }
+    let endpoint = wsStart + loc.host ;
+    WebSocketManager.addSocket("chat-socket",`${endpoint}/ws/chat/`,listenForMessage);
+    WebSocketManager.addSocket("notf-socket",`${endpoint}/ws/notf/`,lisenForNotifications);
+}
 export const navigateTo = url => {
     history.pushState(null ,null,url);
     router();
 }
 
-export const router = async () => {
-    const routes = [
-        {path:"/home",view: Home},
-        {path:"/profile",view: Profile},
-        {path:"/settings",view:Settings},
-        {path:"/login",view:Login},
-        {path:"/register",view:Register},
-        {path:"/logout",view:Logout},
-        {path:"/friends",view:Friends},
-        {path:"/games",view:Games},
-        {path:"/tournament",view:Tournament},
-        {path:"/leaderboard",view:Leaderboard},
-    ];
-    const potentialMatches = routes.map(route => {
-        return {
-            route:route,
-            isMatch :location.pathname === route.path,
-        };
-    });
-    let match = potentialMatches.find(potentialMatche => potentialMatche.isMatch);
-    if(!match){
-        match ={
-            route : routes[0],
-            isMatch: true
-        } 
-    }
-    var view = await new match.route.view();
-    document.querySelector(".sidebar").innerHTML = await view.getSidebar();
-    document.querySelector(".content").innerHTML = await view.getHtml();
-    console.log("\n ***** index afterRender ****** \n");
-    view.afterRender();
-};
-
+window.addEventListener("load",e=>{
+    setLoader(0);
+})
 
 window.addEventListener("popstate", router);
-document.addEventListener("DOMContentLoaded",()=>{
-
+document.addEventListener("DOMContentLoaded", async ()=>{
     document.body.addEventListener("click", e => {
-        if (e.target.matches("[data-link]") || e.target.closest("[data-link]")) {
+        const linkElement = e.target.closest("[data-link]");
+        if (linkElement) {
             e.preventDefault();
-            const linkElement = e.target.closest("a");
-            if (linkElement) {
-                console.log("data-linkxx")
-                tokenIsValid(linkElement.href)
+            const href = linkElement.getAttribute('href');
+            if (href) {
+                navigateTo(href);
             }
         }
     });
-    // router();
+    var _data = await getDataUtils()
+    const url = '/tournament/is_inTourn/';
+    var data = null
+    if (_data)
+        data = await fetch_data(url, 'POST', JSON.stringify(_data))
+    if (data?.intourn == 'yes'){
+        navigateTo('/tournament')
+    }
+    else
+        router();
 })
 
- const refreshAccessToken = async () => {
-    const refreshToken = localStorage.getItem('refresh_token');
-    console.log("entere here ")
-    const response = await fetch('/api/refresh/', {
+ export const refreshAccessToken = async () => {
+    try {
+        const response = await fetch('/api/refresh/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ refresh: refreshToken }),
     });
-
     const data = await response.json();
     if (response.ok) {
-
-        localStorage.setItem('access_token', data.access);
+        SetCookie("access_token",data.access)
+        return true;
     } else {
-
-        console.error('\n\n\n\nFailed to refresh token', data,"\n\n\n\n\n");
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        WebSocketManager.closeAllSockets();
+        SetCookie("access_token",null);
+        SetCookie("refresh_token",null);
         navigateTo('/login');
+        return false
+    }
+    } catch (error) {
+        messageHandling('error','An unexpected error occurred. Please try again later.');
+        return false;
     }
 };
 
-// Call refreshAccessToken periodically
-// refreshAccessToken();
-// setInterval(refreshAccessToken, 18 * 60 * 1000); // Refresh every 15 minutes
 
-const tokenIsValid = async (pathname) => {
-    const accessToken = localStorage.getItem('access_token');
-
-    if(!accessToken)
-    {
-        navigateTo("/login"); 
-        return ;  
-    }
-    const response = await fetch(`/api/protected/`, {
-        method: 'GET',
+async function checkAfterRefreshToken(){
+    const accessToken = getCookie('access_token');
+    if(!accessToken)return false;
+    try {
+        
+        const retryResponse = await fetch(`/api/protected/`, {
+            method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
+            'Authorization': `Bearer ${getCookie('access_token')}`,
         },
     });
-
-    if (response.ok) {
-        console.log("Token is valid.");
-        navigateTo(pathname);
+    if (retryResponse.ok) {
+        return true;
     } else {
-        console.warn("Token is invalid. Attempting to refresh.");
-        await refreshAccessToken();
-        const retryResponse = await fetch(`/api/protected/`, {
+        
+        WebSocketManager.closeAllSockets();
+        SetCookie("access_token",null);
+        SetCookie("refresh_token",null);
+        navigateTo("/login");
+        return false;
+    }
+    } catch (error) {
+        messageHandling('error','An unexpected error occurred. Please try again later.');
+        navigateTo("/login");
+        return false;
+        
+    }
+}
+export async   function tokenIsValid() {
+
+    try {
+        const response = await fetch(`/api/protected/`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Authorization': `Bearer ${getCookie('access_token')}`,
             },
         });
-
-        if (retryResponse.ok) {
-            console.log("Token refreshed and retry successful.");
-            navigateTo(pathname);
-        } else {
-            console.error("Failed to refresh token and retry.", retryResponse);
-            navigateTo("/login");
-        }
+        if (response.ok) {
+        return true;
+    } else {
+        messageHandling("info","Session is invalid. Attempting to refresh.");
+        const check = await refreshAccessToken()
+        if(!check) return false;
+        return await checkAfterRefreshToken();
+    }
+    } catch (error) {
+        navigateTo('/login');
+        return false;
     }
 };
 
-if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
-    document.addEventListener('DOMContentLoaded', tokenIsValid(location.pathname));
-}
-
-// FETCH PROTECETD DATA TO TEST TOKEN-----------------------------------------------
+window.addEventListener('offline', () => {
+    messageHandling("error",'You are currently offline. Please check your internet connection.');
+  });

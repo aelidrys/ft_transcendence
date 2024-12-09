@@ -1,154 +1,176 @@
 import AbstractView from "../js/AbstractView.js";
-// import { } from "../js/router.js";
-import { navigateTo } from "../js/index.js";
+import { getCookie } from "../js/tools.js";
+import globalData from "../js/tools.js  ";
+import { messageHandling } from "../js/utils.js";
+import { getXp, setCloneToProfile } from "../jstools/friendProfile.js";
+
 export default class extends AbstractView {
   constructor() {
     super();
-    console.log("profile constructer called \n\n");
     this.setTitle("Profile");
-
+    this.historycount = 20;
     this.pageTitle = "PROFILE";
-
- }
-
- async setData() {
-  try {
-    let access_token = localStorage.getItem('access_token');
-
-    const response = await fetch(`/api/profile/${this.payload.user_id}/`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${access_token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Failed to fetch profile data');
-    }
-
-    const responseData = await response.json();
-    this.data  = responseData;
-
-    console.log('Profile data:', responseData);
-    console.log('here  data:\n\n\n\n', this.data);
-
-  } catch (error) {
-    console.error('An error occurred:', error);
-  }
-}
-
-
-  
-async getHtml() {
-
-    await this.setPayload();
-    await this.setData();
-    console.log("payload", this.payload);
-    console.log("data", this.data);
-
-
-  console.log("in html data \n\n\n\n",this.data);
-  return `
-        
-  <header class="headbar w-100  align-items-center justify-content-between  p-4">
-  <div class="search position-relative">
-<input type="search" class="p-2  ps-5 rounded-3" placeholder="Type A Keyword">
-</div>
-<div class="icons d-flex align-items-center  ">
-<span class="notf postion-relative">
-<i class="fa-solid fa-bell fa-lg"></i>
-</span>
-<img src="${this.data.avatar}" class=" ms-3" alt="">
-</div>
-</header>
-
-    <div class="pr-welcome m-2 d-flex justify-content-between">
-    <p>  <i class="fa-solid fa-user  fa-fw"></i> Welcome,${this.data.user.username} </p> 
-      <div class="btn-settings">  <i class="fa-solid fa-gear"></i></div>
-  </div>
-<div class="user-profile d-grid   gap-2  rounded-4 ms-3 me-3 mb-2 ">
-  <div class="position-relative avatar-profile d-flex justify-content-around flex-wrap align-items-center">
-
-    
-    <div class="position-absolute top-0 start-50 translate-middle image-container">
-      <img class=" avatar " src="${this.data.avatar}" alt="">
-      <span><i class="fa-solid fa-pencil"></i></span>
-    </div>
-      <form class="form-avatar"  action="" method="post">
-            <input type="file" name="avatar" class="form-control-file" accept="image/*" id="id_avatar">                   
-    </form>
-      
-
-    <div class="pr-name w-60 text-center">
-      <p class="mt-5   text-uppercase fst-italic fw-bold">${this.data.user.username}</p>
-      <p class="mt-5   text-uppercase fst-italic fw-bold">${this.data.user.email}</p>
-    </div>
-  </div>
-  <div class="level-profile d-flex justify-content-center  flex-column m-5">
-    <h4>Level 25</h4>    
-    <div class="progress rounded-4 position-relative overflow-visible">
-      <span class="w-25 rounded-4 "></span>
-    </div>
-    
-  </div>
-</div>
-
-        `;
+    this.allWins = {winMatch:0 ,winTourn:0};
   }
 
 
-  async updateProfile(file) {
-    console.log("enter herer \n\n\n\n\n\n")
-    let access_token = localStorage.getItem('access_token');
-    const formData = new FormData();
-        formData.append('avatar', file);
-        // const data = Object.fromEntries(formData.entries());
-        try {
-            const response = await fetch(`/api/profile/${this.payload.user_id}/`, {
-                method: 'PUT',
+
+
+  async getHtml() {
+    await this.setDataProfiles();
+    await this.getTournStats();
+
+    const headernav = await this.getHeader();
+
+    let postBody = {
+        'id' : this.data.user.id,
+        'name' : this.data.user.username,
+        'historycount' : this.historycount
+    };
+    let url = window.location.origin + "/game_service/api/stats/";  
+    // const url = wi
+    let userobj;
+    let gamesObj = [];
+    try {
+        const response = await fetch(url, {
+                method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${access_token}`
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getCookie("access_token")}`,
                 },
-                // body: JSON.stringify(data)
-                body: formData
+                body: JSON.stringify(postBody)
             });
 
-            const responseData = await response.json();
-            if (response.ok) {
-              
-                console.log('Avatar updated successfully', responseData);
-                // refreshAccessToken();
-                navigateTo("/profile")
-            } else {
-                console.error('Update avatar failed', responseData);
-            }
-        } catch (error) {
-            console.error('An error occurred:', error);
+        if (!response.ok) {
+            // messageHandling("error", "Can't acces game history")
+            // return;
+            throw new Error("Can't access game's history");
         }
-}
+        
+        const responseData = await response.json(); // Parse the JSON from the response
+        userobj = JSON.parse(responseData.user);
+        responseData.historic = JSON.parse(responseData.historic);
+        responseData.historic.forEach(game => {
+            gamesObj.push(game);
+        });
+    } catch (error) {
+       messageHandling("error",error.message);
+    }
+    // await fetch()
+   const  xp =  getXp(userobj?.wins || 0,this.trn_stat?.wins || 0) 
+    let wins = userobj?.wins || 0;
+    let loss = userobj?.loss || 0;
+    let goals_scored = userobj?.goals_scored || 0;
+    let goals_conceded = userobj?.goals_conceded || 0;
+    
+    //get all users
+   
+    let view = ""
+    if (gamesObj.length == 0)
+    {
+        view = `<div class="no-game"> no games played </div>`;
+    }
+    else
+    {
+        view += "";
+        gamesObj.forEach(game => {
+            view += ``
+            
+            let p1profile =  globalData.profiles.find(profile => profile.user.id == game.player1);
+            let p2profile =  globalData.profiles.find(profile => profile.user.id == game.player2);
+            let gamedate = game?.created_at;
+            view += `<div class="histor d-flex justify-content-evenly bd-highlight">
+                        <div class="histor d-flex justify-content-evenly bd-highlight">
+                            <div class="player_01">
+                                <img src="${p1profile?.avatar || "avatar.png" }" alt="Profile Picture">
+                                <div class="Usernametohistory">${p1profile?.user?.username || "undifine user"}</div>
+                            </div>
+                            <div class="player_03 d-flex justify-content-around align-items-center flex-column">
+                                <div class="score_game_histori d-flex justify-content-between align-items-center">
+                                    <div class="buut buut-1">${game?.p1goal || 0}</div>
+                                    <div class="tow_poin">:</div>
+                                    <div class="buut buut-2">${game?.p2goal || 0 }</div>
+                                </div>
+                                <div class="date_game_histori">
+                                    ${gamedate || "00-00-00 00:00:00" }
+                                </div>
+                            </div>
+                            <div class="player_02">
+                                <img src="${p2profile?.avatar || "avatar.png"}" alt="Profile Picture">
+                                <div class="Usernametohistory">${p2profile?.user?.username || "undifine user"}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="separator"></div>`;   
+        });
+    }
 
-  afterRender() {
-    const imageContainer = document.querySelector('.image-container');
-    let avatar = document.querySelector(".avatar");
-    let changeimg = document.querySelector(".form-control-file");
+    return (
+      headernav +
+      `       <div class="content_profile myprofile-user">
+<div class="pr-welcome m-2 d-flex justify-content-between">
+  <p>  <i class="fa-solid fa-user  fa-fw"></i> My Profile </p> 
+    <div class="btn-settings">
+        <a class="d-flex p-3 align-items-center fs-5 rounded-2 mb-2 ms-3"  data-link href="/settings">
+            <i class="fa-solid fa-gear"></i>
+        </a>
+    </div>
+</div>
 
-    imageContainer.onclick = function () {
-        changeimg.click();
-    };
+<div class="profile-container">
+<div class="avatar">
+    <img src="${this.data?.avatar || "avatar.png" }" alt="Profile Picture">
+</div>
+<h1>${this.data?.user?.username || "undifine user"}</h1>
+<div class="xp">${xp} XP</div>
+<div class="separator"></div>
+<div class="stats">
+    <div class="stat" id="wins">
+        <div class="stat-value win">${wins}</div>
+        <div class="stat-label ">Wins</div>
+    </div>
+    <div class="stat" id="draw">
+        <div class="stat-value gf">${goals_scored}</div>
+        <div class="stat-label ">GF</div>
+    </div>
+    <div class="stat" id="draw">
+        <div class="stat-value ga">${goals_conceded}</div>
+        <div class="stat-label ">GA</div>
+    </div>
+    <div class="stat" id="losses">
+        <div class="stat-value los">${loss}</div>
+        <div class="stat-label ">Losses</div>
+    </div>
+</div>
+<div class="separator"></div>
+<h1>Match History</h1>
+<div class="scrool_histori">    
+${view}
+</div>
+<div class="separator"></div>
 
-    changeimg.onchange = () => {
-      const file = changeimg.files[0];
-      this.updateProfile(file);
-  };
+<table class="tournament-table  t-table">
+    <thead>
+        <tr>
+            <th>Tournaments</th>
+            <th class="win">Wins</th>
+            <th class="gf">GF</th>
+            <th class="ga">GA</th>
+        </tr>
+    </thead>
+</table>
+</div>
+</div>`
+    );
+  }
+ async afterRender() {
+    const trn_table = document.querySelector(".t-table");
+    if (!trn_table) {
+        return;
+    }
 
-    imageContainer.addEventListener('mouseenter', () => {
-        avatar.style.filter = "blur(5px)";
-    });
+    const clone = setCloneToProfile(this.trn_stat);
+    trn_table.append(clone);
 
-    imageContainer.addEventListener('mouseleave', () => {
-        avatar.style.filter = 'none';
-    });
-
-}
+  }
 }

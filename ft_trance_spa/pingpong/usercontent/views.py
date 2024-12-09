@@ -1,40 +1,45 @@
 from django.contrib.auth.models import User
-from .models import Profile,Friend_Request 
+from .models import Profile,Friend_Request ,Notification
+from .serializer import UserSerializer ,UpdateUserSerializser,FriendRequestSerializer,NotificationSerializer,ProfileSerializer
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
+from django.http import Http404
+import json
+
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .serializer import ProfileSerializer
-
-from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializer import UserSerializer ,UpdateUserSerializser,FriendRequestSerializer
-
-from rest_framework.authtoken.models import Token
-from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.decorators import api_view, permission_classes
-from .serializer import MyTokenObtainPairSerializer
+from rest_framework.decorators import api_view, permission_classes 
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.views.decorators.csrf import csrf_exempt
+# hada rah ta3 lgame
+@csrf_exempt
+def getUser(request):
+    if request.method == 'POST':
+        try:
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
+            
+            # Process the JSON data
+            login = body_data.get('id', '')
+            user = User.objects.get(id = login)
+            prf = Profile.objects.get(user=user)
+            res = {
+                "id" : user.pk,
+                "login" : user.username,
+                "image" : prf.avatar.url,
+            }
 
-from django.http import HttpResponse, HttpResponseRedirect
-import json
+            return HttpResponse(json.dumps(res))
+        except json.JSONDecodeError as e:
+            return HttpResponse(f'Error decoding JSON: {str(e)}', status=400)
+    else:
+        return HttpResponse('Unsupported request method')
 
-class MyTokenObtainPairView(TokenObtainPairView):
-    serializer_class = MyTokenObtainPairSerializer
 
-
-def get_tokens_for_user(user):
-    refresh = RefreshToken.for_user(user)
-    return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token),
-    }
-    
-    
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
@@ -42,51 +47,32 @@ def register(request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            token = get_tokens_for_user(user)
-            return Response({"token": token, "user": serializer.data}, status=status.HTTP_201_CREATED)
+            return Response({"user": serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-   
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def login(request):
-    user = get_object_or_404(User,username=request.data['username'])
-    if not user.check_password(request.data['password']):
-        return Response({"details": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
-    token, created = Token.objects.get_or_create(user=user)
-    serializer = UserSerializer(instance=user)
-    return Response({"token": token.key, "user": serializer.data})
-
-
-from rest_framework_simplejwt.authentication import JWTAuthentication
-
-
-class Home(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        content = {'message': 'Hello, World!'}
-        return Response(content)
 
 def get_profile(user):
-    profile = Profile.objects.get(user=user)
-    return profile
+    try:
+        return Profile.objects.get(user=user)
+    except Profile.DoesNotExist:
+        raise Http404("Profile not found")
 
-            
-    
-    
 class ProfileList(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    """
-    List all snippets, or create a new snippet.
-    """
     def get(self, request, format=None):
         profile = Profile.objects.all()
         serializer = ProfileSerializer(profile, many=True)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+class MyProfileList(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    def get(self, request, format=None):
+        profile = get_profile(request.user)
+        serializer = ProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class UserDetail(APIView):
     authentication_classes = [JWTAuthentication]
@@ -97,63 +83,48 @@ class UserDetail(APIView):
         serializer = UpdateUserSerializser(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "message": "User data updated successfully.",
+                    "updated_data": serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
-
-
 class Profileview(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated] 
     def get_object(self, pk):
         try:
             return User.objects.get(pk=pk)
         except User.DoesNotExist:
-            raise Http404
-    def get(self, request,pk, format=None):
-            user = self.get_object(pk)
-            profile = Profile.objects.get(user=user)
-            serializer = ProfileSerializer(profile)
-            # print(serializer.data)
-            return Response(serializer.data)
-    
-    def put(self, request, pk, format=None):
-        print("enter here \n\n")
-        user = self.get_object(pk)
-        profile = Profile.objects.get(user=user)
-        serializer = ProfileSerializer(profile, data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            print(user)
-            print('profile',profile)
-            print(serializer.data)
-            # token = get_tokens_for_user(user)
-            return Response({"user": serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    # def delete(self, request, pk, format=None):
-    #     profile = self.get_object(pk)
-    #     snippet.delete()
-    #     return Response(status=status.HTTP_204_NO_CONTENT)
+            raise Http404("User not found")
 
-class NotProtectedData(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    @csrf_exempt 
-    def get(self, request):
-        headers = request.headers
-        print('Headers:', headers)
-        content = {'message': 'Hello, This is valid!'}
-        return Response(content)
+    def get_profile(self, user):
+        try:
+            return Profile.objects.get(user=user)
+        except Profile.DoesNotExist:
+            raise Http404("Profile not found")
+        
+    def get(self, request,pk, format=None):
+        user = self.get_object(pk)
+        profile = self.get_profile(user)
+        serializer = ProfileSerializer(profile)
+        return Response(serializer.data)
+
+    def put(self, request, pk, format=None):
+        user = self.get_object(pk)
+        profile = self.get_profile(user)
+        serializer = ProfileSerializer(profile, data=request.data,partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"success": "Profile updated successfully!"}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ProtectedData(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
-        headers = request.headers
-        print('Headers:', headers)
         content = {'message': 'Hello, This is valid!'}
         return Response(content)
     
@@ -166,32 +137,47 @@ class FriendRequestList(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     def get(self, request, format=None):
-        current_user = request.user
-        all_friend_requests = Friend_Request.objects.filter(receiver=current_user)
-        all_friend_requests_send = Friend_Request.objects.filter(sender=current_user)
-        serializer = FriendRequestSerializer(all_friend_requests, many=True)
-        serializer_send = FriendRequestSerializer(all_friend_requests_send, many=True)
-        return Response({"ireceive":serializer.data,"isend" : serializer_send.data}, status=status.HTTP_200_OK)
-    
+        current_user_profile = get_profile(user=request.user)
+        try:
+            all_friend_requests = Friend_Request.objects.filter(receiver=current_user_profile)
+            all_friend_requests_send = Friend_Request.objects.filter(sender=current_user_profile)
+            serializer = FriendRequestSerializer(all_friend_requests, many=True)
+            serializer_send = FriendRequestSerializer(all_friend_requests_send, many=True)
+            return Response({"ireceive": serializer.data, "isend": serializer_send.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class CreateFriendRequest(APIView):
-    
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk, format=None):
-        sender = request.user
+        sender = get_profile(user=request.user)
+        if sender.id == pk:
+            return Response({'error': 'You cannot send a friend request to yourself.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            receiver = User.objects.get(id=pk)
+            receiver = Profile.objects.get(id=pk)
+            if sender in  receiver.friends.all():
+                return Response({'error': f'You already friend with {receiver.user}.'}, status=status.HTTP_400_BAD_REQUEST)
+            
             friend_request, created = Friend_Request.objects.get_or_create(
                 sender=sender, receiver=receiver
             )
             if created:
-                return Response({'success': 'Friend request sent successfully.'}, status=status.HTTP_201_CREATED)
+                return Response({'success': f'Friend request sent successfully to {receiver.user}.'}, status=status.HTTP_201_CREATED)
             else:
-                return Response({'info': 'Friend request already exists.'}, status=status.HTTP_200_OK)
-        except User.DoesNotExist:
-            return Response({'error': 'User otn found.'}, status=status.HTTP_404_NOT_FOUND)
+                return Response({'info': f'Friend request already sent to {receiver.user}.'}, status=status.HTTP_200_OK)
+        except Profile.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+def acceptFriend(friendRequest,userProfile):
+    if friendRequest.receiver == userProfile:
+        friendRequest.receiver.friends.add(friendRequest.sender)
+        return True
+    return False
 
 class ManageFriendRequest(APIView):
     authentication_classes = [JWTAuthentication]
@@ -203,8 +189,8 @@ class ManageFriendRequest(APIView):
         except Friend_Request.DoesNotExist:
             return Response({'error': 'Friend request not found.'}, status=status.HTTP_404_NOT_FOUND)
         
-        if (friend_request.accept_friend(request)):
-            print("deleted",friend_request)
+        pCurrentUser = get_profile(user=request.user)
+        if (acceptFriend(friend_request,pCurrentUser)):
             friend_request.delete()
             return Response({'success': 'new friend added  successfully.'}, status=status.HTTP_201_CREATED)
         else:
@@ -216,61 +202,111 @@ class ManageFriendRequest(APIView):
         except Friend_Request.DoesNotExist:
             return Response({'error': 'Friend request not found.'}, status=status.HTTP_404_NOT_FOUND)
         
-        if friend_request.receiver == request.user or friend_request.sender == request.user:
+        currentP = get_profile(request.user)
+        if friend_request.receiver == currentP or friend_request.sender == currentP:
             friend_request.delete()
-            return Response({'message': 'Friend request deleted successfully.'}, status=status.HTTP_200_OK)
+            return Response({'success': 'Friend request deleted successfully.'}, status=status.HTTP_200_OK)
         else:
             return Response({'error': 'You are not authorized to delete this friend request.'}, status=status.HTTP_403_FORBIDDEN)
     
+class NotifictionDetails(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [AllowAny]
     
+    def post(self,request,pk,format=None):
+        try:
+            notification = Notification.objects.get(id=pk,user=request.user)
+        except Notification.DoesNotExist:
+            return Response({'error': 'Notification not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = NotificationSerializer(notification,data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self,request,pk,format=None):
+        try:
+            notification = Notification.objects.get(id=pk,user=request.user)
+            notification.delete()
+            notifications = Notification.objects.filter(user=request.user)
+            unread_count = notifications.filter(is_read=False).count()
+            return Response({'message': 'Notifiation deleted successfully.' , "unread_count": unread_count}, status=status.HTTP_200_OK)
+        except Notification.DoesNotExist:
+            return Response({'error': 'Notification not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-def is_auth(request):
-    print(request.headers)
-    json_data = {
-        "is_auth" : True,
-        "redirect": ""
-    }
+
+
+class NotificationList(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     
-    if request.user.is_authenticated:
-        json_data = {
-            "is_auth" : True,
-            "redirect": "",
-            "userid" : request.user.username
-    }
-    else:
-        json_data["is_auth"]= False
-        json_data['redirect'] = '/accounts/login'
+    def get(self, request, format=None):
         try:
-            access_token = request.session['access_token']
-            if access_token:
-                user = Profile.objects.get(access_token=access_token)
-                json_data['userid'] = user.user.username
-                json_data['is_auth'] = True
-        except Exception as e:
-            pass    
-
-    responce = HttpResponse(json.dumps(json_data))
-    return responce
-
-@csrf_exempt
-def getUser(request):
-    if request.method == 'POST':
-        try:
-            body_unicode = request.body.decode('utf-8')
-            body_data = json.loads(body_unicode)
+            notifications = Notification.objects.filter(user=request.user).order_by('-timestamp')
+            unread_count = notifications.filter(is_read=False).count()
+            serializer = NotificationSerializer(notifications, many=True)
+            return Response({
+                "notifications": serializer.data,
+                "unread_count": unread_count
+            }, status=status.HTTP_200_OK)
             
-            # Process the JSON data
-            login = body_data.get('login', '')
-            user = User.objects.get(username = login)
-            prf = Profile.objects.get(user=user)
-            res = {
-                "login" : login,
-                "image" : prf.avatar.url,
-            }
+        except Notification.DoesNotExist:
+            return Response({
+                "error": "Notifications not found for the user."
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        except Exception as e:
+            return Response({
+                "error": f"An unexpected error occurred: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class FriendDetails(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
-            return HttpResponse(json.dumps(res))
-        except json.JSONDecodeError as e:
-            return HttpResponse(f'Error decoding JSON: {str(e)}', status=400)
-    else:
-        return HttpResponse('Unsupported request method')
+    def delete(self, request, pk, format=None):
+        try:
+            prfriend = Profile.objects.get(pk=pk)
+            profile = Profile.objects.get(user=request.user)
+        except Profile.DoesNotExist:
+            return Response({'error': 'Profile not found.'}, status=status.HTTP_404_NOT_FOUND)       
+        if prfriend in profile.friends.all():
+            profile.friends.remove(prfriend)
+            return Response({"success": "Friend removed successfully"}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'User is not in your friends list.'}, status=status.HTTP_400_BAD_REQUEST)
+class ChangePassword(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def put(self, request, pk, format=None):
+        oldpassword = request.data['oldpassword']
+        newpassword = request.data["newpassword"]
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({'error': 'User  not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        pr = get_profile(user)
+        # print(pr.remote_user,flush=True)
+        if pr.remote_user:
+            return Response({'error': 'You Cannot Change Password Of this User.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if newpassword.strip() == "":
+             return Response({'error':"Password cannot be blank or contain only spaces."}, status=400)
+
+        if not user.check_password(raw_password=oldpassword):
+            return Response({'error': 'Current password is not correct'}, status=400)
+        
+        if not (8 <= len(newpassword.strip())  <= 20):
+            return Response({'error': 'Password must be 8-20 characters long.'}, status=400)
+        user.set_password(newpassword)
+        user.save()
+        return Response({'success': 'password changed successfully'}, status=200)
+
+class LogoutView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        response = Response({"message": "Logout successful"},status=200)
+        response.delete_cookie('refresh_token', path='/')
+        return response
